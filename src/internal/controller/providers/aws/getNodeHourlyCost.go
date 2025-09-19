@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,23 +21,11 @@ import (
 func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1.Node) (hourlyCost float64, err error) {
 	log := logf.FromContext(ctx)
 
-	// Gather node information
+	// Get instanceId
 	var instanceId string
-	hourlyCost = 0
-
-	// Getting instance ID
-	var rx *regexp.Regexp
-	if rx, err = regexp.Compile(`^aws:///[a-z0-9-]+/i-\w+$`); err != nil {
-		log.V(1).Error(err, "regexp compile error")
+	if instanceId, err = getInstanceId(ctx, r, node); err != nil {
 		return
 	}
-	if !rx.MatchString(node.Spec.ProviderID) {
-		log.V(1).Error(err, "failed to match node provider id")
-		r.Eventf(node, corev1.EventTypeWarning, "UnknownProviderID", ".spec.providerId does not match %s", r)
-		return
-	}
-	instanceId = "i-" + strings.Split(node.Spec.ProviderID, "/i-")[1]
-	log = log.WithValues("instanceId", instanceId)
 
 	// Authorize AWS
 	var awsConfig aws.Config

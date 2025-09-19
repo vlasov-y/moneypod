@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/vlasov-y/moneypod/internal/controller"
+	"github.com/vlasov-y/moneypod/internal/monitoring"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -48,8 +49,8 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
 	// +kubebuilder:scaffold:scheme
+	monitoring.RegisterMetrics()
 }
 
 // nolint:gocyclo
@@ -207,6 +208,13 @@ func main() {
 		Recorder: mgr.GetEventRecorderFor("MoneyPod"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Node")
+		os.Exit(1)
+	}
+	if err := (&controller.PodReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

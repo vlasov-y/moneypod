@@ -10,11 +10,10 @@
       "request": "launch",
       "mode": "auto",
       "program": "src/cmd/main.go",
-      "env": {
-        "KUBECONFIG": "${workspaceFolder}/src/kubeconfig.yaml",
-        "ENABLE_WEBHOOKS": "false",
-        "ALERTS_NAMESPACE": "default"
-      }
+      "args": [
+        "--metrics-bind-address=:8080",
+        "--metrics-secure=false"
+      ]
     }
   ]
 }

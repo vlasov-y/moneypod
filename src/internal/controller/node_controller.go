@@ -21,10 +21,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
-	"github.com/vlasov-y/moneypod/internal/controller/utils"
+	"github.com/vlasov-y/moneypod/internal/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,14 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-const (
-	annotationHourlyCost    = "moneypod.io/hourly-cost"
-	maxConcurrentReconciles = 1
-)
-
-// Requeue after result object with a default timeout
-var requeue = ctrl.Result{RequeueAfter: 10 * time.Second}
 
 // NodeReconciler reconciles a Node object
 type NodeReconciler struct {
@@ -65,11 +56,16 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		if !errors.IsNotFound(err) {
 			msg := "cannot get the node"
 			log.V(1).Error(err, msg)
-			r.Recorder.Eventf(&node, corev1.EventTypeWarning, "GetNodeFailed", "%s: %s", msg, err.Error())
 		}
 		return result, client.IgnoreNotFound(err)
 	}
 	log = log.WithValues("node", node.Name)
+
+	// Handle deletion
+	if node.GetDeletionTimestamp() != nil {
+		deleteNodeMetrics(&node)
+		return
+	}
 
 	// Skip not ready nodes
 	for _, c := range node.Status.Conditions {
@@ -86,46 +82,88 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
-
-	// Skip the node if it is processed already
-	if _, exists := annotations[annotationHourlyCost]; exists {
-		log.V(2).Info(fmt.Sprintf("skipping the node since it already has %s annotation", annotationHourlyCost))
-		return
-	}
-
 	// Get node hourly cost
 	var hourlyCost float64
+	// Calculate Node hourly cost if annotationHourlyCost is not set
+	if _, exists := annotations[annotationHourlyCost]; !exists {
+		// Switch by provider
+		if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
+			if hourlyCost, err = aws.GetNodeHourlyCost(ctx, r.Recorder, &node); err != nil {
+				if err.Error() == "requeue" {
+					err = nil
+					return requeue, err
+				}
+				return
+			}
+		} else {
+			// If no provider is implemented - set cost to unknown
+			log.V(1).Info("no cost provider implemented", "providerId", node.Spec.ProviderID)
+			hourlyCost = -1
+		}
+
+		// Add respective annotation
+		if hourlyCost > 0 {
+			annotations[annotationHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 7, 64)
+		} else {
+			annotations[annotationHourlyCost] = "unknown"
+		}
+		node.SetAnnotations(annotations)
+		// Update the node object
+		if err = r.Update(ctx, &node); err != nil {
+			if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
+				err = nil
+				log.V(1).Info("requeue because of the update conflict")
+				return requeue, err
+			}
+			log.V(1).Error(err, "failed to update the node object")
+			r.Recorder.Eventf(&node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
+			return
+		}
+	}
+	// Get precalculated cost...
+	if annotations[annotationHourlyCost] == "unknown" {
+		hourlyCost = -1
+	} else {
+		// ...if it is defined
+		if hourlyCost, err = strconv.ParseFloat(annotations[annotationHourlyCost], 64); err != nil {
+			msg := fmt.Sprintf("failed to parse the price: %s", annotations[annotationHourlyCost])
+			log.V(1).Error(err, msg)
+			// If price is broken - delete the annotation
+			newAnnotations := map[string]string{}
+			for k, v := range annotations {
+				if k != annotationHourlyCost {
+					newAnnotations[k] = v
+				}
+			}
+			node.SetAnnotations(newAnnotations)
+			// Update the object
+			if err = r.Update(ctx, &node); err != nil {
+				if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
+					err = nil
+					log.V(1).Info("requeue because of the update conflict")
+					return requeue, err
+				}
+				log.V(1).Error(err, "failed to update the node object")
+				r.Recorder.Eventf(&node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
+				return
+			}
+			return
+		}
+	}
+
+	// Update metrics
 	if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
-		if hourlyCost, err = aws.GetNodeHourlyCost(ctx, r.Recorder, &node); err != nil {
+		var info types.NodeInfo
+		if info, err = aws.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
 			if err.Error() == "requeue" {
 				err = nil
 				return requeue, err
 			}
 			return
 		}
+		updateNodeMetrics(&node, hourlyCost, &info)
 	} else {
-		// If no provider is implemented - set cost to unknown
-		log.V(1).Info("no cost provider implemented", "providerId", node.Spec.ProviderID)
-		hourlyCost = -1
-	}
-
-	// Add respective annotation
-	if hourlyCost > 0 {
-		annotations[annotationHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 5, 64)
-	} else {
-		annotations[annotationHourlyCost] = "unknown"
-	}
-	node.SetAnnotations(annotations)
-	// Update the node object
-	if err = r.Update(ctx, &node); err != nil {
-		if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
-			err = nil
-			log.V(1).Info("requeue because of the update conflict")
-			return requeue, err
-		}
-		log.V(1).Error(err, "failed to update the node object")
-		r.Recorder.Eventf(&node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
-		return
+		log.V(1).Info("no info provider implemented", "providerId", node.Spec.ProviderID)
 	}
 
 	return
@@ -136,8 +174,6 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Node{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
-		WithEventFilter(utils.IgnoreOutOfOrder()).
-		WithEventFilter(utils.IgnoreDeletionPredicate()).
 		Named("node").
 		Complete(r)
 }

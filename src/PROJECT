@@ -12,7 +12,9 @@ projectName: moneypod
 repo: github.com/vlasov-y/moneypod
 resources:
   - controller: true
-    domain: ""
     kind: Node
+    version: v1
+  - controller: true
+    kind: Pod
     version: v1
 version: "3"

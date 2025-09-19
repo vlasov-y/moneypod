@@ -19,6 +19,7 @@ rules:
   - ""
   resources:
   - nodes
+  - pods
   verbs:
   - get
   - list
@@ -29,7 +30,25 @@ rules:
   - ""
   resources:
   - nodes/status
+  - pods/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
