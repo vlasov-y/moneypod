@@ -1,0 +1,42 @@
+#  ┬─┐┬─┐┬  ┬─┐┬─┐┐─┐┬─┐
+#  │┬┘├─ │  ├─ │─┤└─┐├─
+#  ┘└┘┴─┘┘─┘┴─┘┘ ┘──┘┴─┘
+
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove 'v' from tag
+        id: version
+        run: echo "${{ github.ref_name }}" | sed -r 's/^v//' |
+          xargs printf "version=%s" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Update image tag
+        run: kustomize edit set image "controller=ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
+        working-directory: src/config/manager
+
+      - name: Kustomize Build
+        run: kustomize build src/config/default | tee install.yaml
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: install.yaml
