@@ -18,10 +18,8 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-	"strings"
 
+	. "github.com/vlasov-y/moneypod/internal/controller/pod"
 	. "github.com/vlasov-y/moneypod/internal/types"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -52,6 +50,7 @@ type PodReconciler struct {
 // +kubebuilder:rbac:groups="apps",resources=replicasets,verbs=get;list
 // +kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list
 // +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list
 
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	log := logf.FromContext(ctx)
@@ -72,80 +71,34 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 		return
 	}
 
-	// Get pod annotations
-	podAnnotations := pod.GetAnnotations()
-	if podAnnotations == nil {
-		podAnnotations = map[string]string{}
-	}
-
-	// Pod have to have annotationNodeHourlyCost, if not - copy one from its Node
-	if _, exists := podAnnotations[annotationNodeHourlyCost]; !exists {
-		// Get Pod's Node
-		node := corev1.Node{}
-		if err = r.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, &node); err != nil {
-			// Object does not exist, ignore the event and return
-			if !errors.IsNotFound(err) {
-				log.V(1).Error(err, "cannot get the node")
-			}
-			return result, client.IgnoreNotFound(err)
-		}
-		nodeAnnotations := node.GetAnnotations()
-		if nodeAnnotations == nil {
-			nodeAnnotations = map[string]string{}
-		}
-		// Node is not yet processes, requeueing the pod
-		if _, exists := nodeAnnotations[annotationHourlyCost]; !exists {
+	// Manage hourly cost
+	var hourlyCost float64
+	if hourlyCost, err = UpdateHourlyCost(ctx, r.Client, r.Recorder, &pod); err != nil {
+		if err.Error() == "requeue" {
+			err = nil
 			return requeue, err
 		}
-		// Applying new annotation
-		podAnnotations[annotationNodeHourlyCost] = nodeAnnotations[annotationHourlyCost]
-		pod.SetAnnotations(podAnnotations)
-		if err = r.Update(ctx, &pod); err != nil {
-			if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
-				err = nil
-				log.V(1).Info("requeue because of the update conflict")
-				return requeue, err
-			}
-			log.V(1).Error(err, "failed to update the pod object")
-			r.Recorder.Eventf(&pod, corev1.EventTypeWarning, "UpdatePodFailed", err.Error())
-			return
-		}
+		return
+	}
+	// If cost is unknown
+	if hourlyCost < 0 {
+		return
 	}
 
-	// Get precalculated cost...
-	var hourlyCost float64
-	if podAnnotations[annotationNodeHourlyCost] == "unknown" {
-		hourlyCost = -1
-	} else {
-		// ...if it is defined
-		if hourlyCost, err = strconv.ParseFloat(podAnnotations[annotationNodeHourlyCost], 64); err != nil {
-			msg := fmt.Sprintf("failed to parse the price: %s", podAnnotations[annotationNodeHourlyCost])
-			log.V(1).Error(err, msg)
-			// If price is broken - delete the annotation
-			newAnnotations := map[string]string{}
-			for k, v := range podAnnotations {
-				if k != annotationNodeHourlyCost {
-					newAnnotations[k] = v
-				}
-			}
-			pod.SetAnnotations(newAnnotations)
-			// Update the object
-			if err = r.Update(ctx, &pod); err != nil {
-				if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
-					err = nil
-					log.V(1).Info("requeue because of the update conflict")
-					return requeue, err
-				}
-				log.V(1).Error(err, "failed to update the pod object")
-				r.Recorder.Eventf(&pod, corev1.EventTypeWarning, "UpdatePodFailed", err.Error())
-				return
-			}
-			return
+	// Decrease the hourly cost according to the node utilization percent
+	var utilizationPercent float64
+	if utilizationPercent, err = UpdateUtilizationPercent(ctx, r.Config, r.Client, r.Recorder, &pod); err != nil {
+		if err.Error() == "requeue" {
+			err = nil
+			return requeue, err
 		}
+		return
 	}
+	hourlyCost *= utilizationPercent
 
 	// Get pod info
 	var info PodInfo
+	// Get owner
 	if len(pod.GetOwnerReferences()) > 0 {
 		ownerRef := pod.GetOwnerReferences()[0]
 		info.Owner.Kind = ownerRef.Kind
@@ -171,14 +124,16 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 
 	// Update metrics
 	updatePodMetrics(&pod, hourlyCost, &info)
-	return
+
+	// Reschedule
+	return requeueMetrics, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: MaxConcurrentReconciles}).
 		Named("pod").
 		Complete(r)
 }

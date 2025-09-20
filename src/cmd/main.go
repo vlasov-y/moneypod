@@ -39,6 +39,7 @@ import (
 
 	"github.com/vlasov-y/moneypod/internal/controller"
 	"github.com/vlasov-y/moneypod/internal/monitoring"
+	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -49,6 +50,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+	utilruntime.Must(metricsv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 	monitoring.RegisterMetrics()
 }
@@ -211,8 +213,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err := (&controller.PodReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Config:   mgr.GetConfig(),
+		Recorder: mgr.GetEventRecorderFor("MoneyPod"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)

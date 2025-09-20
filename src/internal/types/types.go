@@ -1,5 +1,14 @@
 package types
 
+const (
+	// Node hourly cost
+	AnnotationHourlyCost = "moneypod.io/hourly-cost"
+	// Hourly cost copied from the node where the pod runs
+	AnnotationNodeHourlyCost = "moneypod.io/node-hourly-cost"
+	// Max concurrect reconciles per controller
+	MaxConcurrentReconciles = 1
+)
+
 type NodeCapacity string
 
 const (
