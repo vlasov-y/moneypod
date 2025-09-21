@@ -19,7 +19,6 @@ rules:
   - ""
   resources:
   - nodes
-  - pods
   verbs:
   - get
   - list
@@ -30,11 +29,28 @@ rules:
   - ""
   resources:
   - nodes/status
-  - pods/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - ""
+  resources:
+  - pods/status
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+- apiGroups:
+  - ""
+  - metrics.k8s.io
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - apps
   resources:
@@ -44,6 +60,7 @@ rules:
   verbs:
   - get
   - list
+  - watch
 - apiGroups:
   - batch
   resources:
@@ -52,10 +69,4 @@ rules:
   verbs:
   - get
   - list
-- apiGroups:
-  - metrics.k8s.io
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
+  - watch

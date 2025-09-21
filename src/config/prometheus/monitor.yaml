@@ -23,3 +23,10 @@ spec:
         keySecret:
           name: metrics
           key: tls.key
+      metricRelabelings:
+        - sourceLabels: [exported_namespace]
+          targetLabel: namespace
+        - sourceLabels: [exported_pod]
+          targetLabel: pod
+        - regex: "exported_.+|instance|container|job|service"
+          action: labeldrop

@@ -43,19 +43,19 @@ var (
 		Subsystem: "pod",
 		Name:      "cpu_hourly_cost",
 		Help:      "Pod CPU hourly cost for one CPU core.",
-	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
+	}, []string{"pod", "name", "namespace", "owner_kind", "owner_name", "node"})
 	PodMemoryHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: "pod",
 		Name:      "memory_hourly_cost",
 		Help:      "Pod Memory hourly cost for one MiB.",
-	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
+	}, []string{"pod", "name", "namespace", "owner_kind", "owner_name", "node"})
 	PodRequestsTotalCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: "pod",
 		Name:      "requests_total_cost",
 		Help:      "Pod resources requests total cost.",
-	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
+	}, []string{"pod", "name", "namespace", "owner_kind", "owner_name", "node"})
 )
 
 // RegisterMetrics registers all metrics in the Metrics map with Prometheus's global registry.

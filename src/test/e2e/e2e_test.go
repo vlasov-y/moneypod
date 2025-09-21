@@ -31,16 +31,16 @@ import (
 )
 
 // namespace where the project is deployed in
-const namespace = "moneypod-system"
+const namespace = "moneypod"
 
 // serviceAccountName created for the project
-const serviceAccountName = "moneypod-controller-manager"
+const serviceAccountName = "moneypod-app"
 
 // metricsServiceName is the name of the metrics service of the project
-const metricsServiceName = "moneypod-controller-manager-metrics-service"
+const metricsServiceName = "moneypod-metrics"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-const metricsRoleBindingName = "moneypod-metrics-binding"
+const metricsRoleBindingName = "moneypod-app"
 
 var _ = Describe("Manager", Ordered, func() {
 	var controllerPodName string

@@ -22,16 +22,16 @@ func deletePodMetrics(pod *corev1.Pod) {
 	})
 }
 
-func createPodMetrics(pod *corev1.Pod, node *corev1.Node, info *types.PodInfo) {
+func createPodMetrics(pod *corev1.Pod, info *types.PodInfo) {
 	deletePodMetrics(pod)
 	monitoring.PodCpuHourlyCostMetric.WithLabelValues(
-		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
+		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
 	).Set(info.NodeCpuCoreHourlyCost)
 	monitoring.PodMemoryHourlyCostMetric.WithLabelValues(
-		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
+		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
 	).Set(info.NodeMemoryMiBHourlyCost)
 	hours := math.Ceil(time.Since(pod.GetCreationTimestamp().Time).Hours())
 	monitoring.PodRequestsTotalCostMetric.WithLabelValues(
-		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
+		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
 	).Set(info.PodRequestsHourlyCost * hours)
 }

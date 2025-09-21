@@ -27,6 +27,12 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 		return
 	}
 
+	if hourlyCostStr == "unknown" {
+		msg := fmt.Sprintf("node %s has unknown hourly cost", node.Name)
+		r.Eventf(node, corev1.EventTypeWarning, "NodeHourlyCostUnknown", msg)
+		return
+	}
+
 	if hourlyCost, err = strconv.ParseFloat(hourlyCostStr, 64); err != nil {
 		msg := fmt.Sprintf("failed to parse the node price: %s", hourlyCostStr)
 		log.V(1).Error(err, msg)

@@ -29,7 +29,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # moneypod.io/moneypod-bundle:$VERSION and moneypod.io/moneypod-catalog:$VERSION.
-IMAGE_TAG_BASE ?= moneypod.io/moneypod
+IMAGE_TAG_BASE ?= ghcr.io/vlasov-y/moneypod
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -50,7 +50,7 @@ endif
 # This is useful for CI or a project to utilize a specific version of the operator-sdk toolkit.
 OPERATOR_SDK_VERSION ?= v1.41.1
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= $(IMAGE_TAG_BASE)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -194,8 +194,8 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > dist/install.yaml
+	cd config && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config > dist/install.yaml
 
 ##@ Deployment
 
@@ -205,20 +205,26 @@ endif
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
+	if [ -d config/crd ]; then $(KUBECTL) apply -k config/crd; fi
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+	if [ -d config/crd ]; then $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -k config/crd; fi
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	cd config && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUBECTL) apply -k config
+
+.PHONY: deploy-kind
+deploy-kind: manifests kustomize docker-build ## Deploy controller to the kind cluster
+	kind load docker-image --name $(KIND_CLUSTER) ${IMG}
+	cd config && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUBECTL) apply -k config
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+	$(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -k config
 
 ##@ Dependencies
 

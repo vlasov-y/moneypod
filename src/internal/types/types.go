@@ -1,5 +1,10 @@
 package types
 
+import (
+	"os"
+	"strconv"
+)
+
 const (
 	annotationDomain = "moneypod.io"
 	// Node hourly cost
@@ -10,9 +15,20 @@ const (
 	AnnotationNodeType = annotationDomain + "/type"
 	// Node location
 	AnnotationNodeAvailabilityZone = annotationDomain + "/availability-zone"
-	// Max concurrect reconciles per controller
-	MaxConcurrentReconciles = 1
 )
+
+// Max concurrent reconciles per controller
+var MaxConcurrentReconciles int = func() int {
+	str := os.Getenv("MAX_CONCURRENT_RECONCILES")
+	if str == "" {
+		return 10
+	}
+	i, err := strconv.ParseInt(str, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	return int(i)
+}()
 
 type NodeCapacity string
 

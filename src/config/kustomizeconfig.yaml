@@ -8,4 +8,4 @@ nameReference:
       - kind: Certificate
         path: /spec/secretName
       - kind: Deployment
-        path: /spec/secretName
+        path: /spec/template/spec/volumes/secret/secretName

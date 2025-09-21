@@ -4,6 +4,7 @@ metadata:
   name: app
 spec:
   replicas: 1
+  selector: {}
   template:
     metadata:
       annotations:
@@ -44,6 +45,7 @@ spec:
             - --metrics-bind-address=:8443
             - --metrics-cert-path=/tls/metrics
           image: controller
+          imagePullPolicy: IfNotPresent
           ports:
             - name: metrics
               containerPort: 8443

@@ -4,8 +4,7 @@ resources:
   - flux.yaml
   - https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
   - https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
-  - https://github.com/prometheus-operator/prometheus-operator/releases/latest/download/stripped-down-crds.yaml
-  - victoria-metrics.yaml
+  - victoria-metrics
 
 patches:
   - target:

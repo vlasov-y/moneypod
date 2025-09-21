@@ -43,14 +43,14 @@ type PodReconciler struct {
 	Recorder record.EventRecorder
 }
 
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update;patch
-// +kubebuilder:rbac:groups="",resources=pods/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;list
-// +kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list
-// +kubebuilder:rbac:groups="apps",resources=replicasets,verbs=get;list
-// +kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list
-// +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list
-// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods/status,verbs=get;list;update;patch
+// +kubebuilder:rbac:groups="apps",resources=statefulsets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch
+// +kubebuilder:rbac:groups="apps",resources=replicasets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="batch",resources=jobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups="batch",resources=cronjobs,verbs=get;list;watch
+// +kubebuilder:rbac:groups=metrics.k8s.io,resources=pods,verbs=get;list;watch
 
 func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	log := logf.FromContext(ctx)
@@ -142,7 +142,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 			}
 			// Copy ReplicaSet owner to pod info
 			if len(replicaset.GetOwnerReferences()) > 0 {
-				ownerRef = pod.GetOwnerReferences()[0]
+				ownerRef = replicaset.GetOwnerReferences()[0]
 				info.Owner.Kind = ownerRef.Kind
 				info.Owner.Name = ownerRef.Name
 			}
@@ -150,7 +150,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	}
 
 	// Update metrics
-	createPodMetrics(&pod, &node, &info)
+	createPodMetrics(&pod, &info)
 
 	return
 }
