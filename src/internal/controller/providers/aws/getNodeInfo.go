@@ -43,11 +43,11 @@ func GetNodeInfo(ctx context.Context, r record.EventRecorder, node *corev1.Node)
 	// Get remaining info
 	for _, reservation := range describe.Reservations {
 		for _, instance := range reservation.Instances {
-			info.Capacity = types.OnDemand
+			info.Capacity = string(types.OnDemand)
 			info.Type = string(instance.InstanceType)
 			info.AvailabilityZone = *instance.Placement.AvailabilityZone
 			if instance.SpotInstanceRequestId != nil {
-				info.Capacity = types.Spot
+				info.Capacity = string(types.Spot)
 			}
 		}
 	}

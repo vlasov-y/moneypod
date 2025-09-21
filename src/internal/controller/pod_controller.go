@@ -71,9 +71,21 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 		return
 	}
 
-	// Manage hourly cost
-	var hourlyCost float64
-	if hourlyCost, err = UpdateHourlyCost(ctx, r.Client, r.Recorder, &pod); err != nil {
+	// Get pod's node
+	node := corev1.Node{}
+	if err = r.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, &node); err != nil {
+		// Object does not exist, ignore the event and return
+		if !errors.IsNotFound(err) {
+			log.V(1).Error(err, "cannot get the node")
+		}
+		return result, client.IgnoreNotFound(err)
+	}
+
+	// Get pod info
+	var info PodInfo
+
+	// Get node's hourly cost
+	if info.NodeHourlyCost, err = GetNodeHourlyCost(ctx, r.Client, r.Recorder, &pod, &node); err != nil {
 		if err.Error() == "requeue" {
 			err = nil
 			return requeue, err
@@ -81,23 +93,38 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 		return
 	}
 	// If cost is unknown
-	if hourlyCost < 0 {
+	if info.NodeHourlyCost < 0 {
 		return
 	}
 
-	// Decrease the hourly cost according to the node utilization percent
-	var utilizationPercent float64
-	if utilizationPercent, err = UpdateUtilizationPercent(ctx, r.Config, r.Client, r.Recorder, &pod); err != nil {
+	// Calculate minimum pod hourly cost basing on resources requests
+	if info.PodRequestsHourlyCost, err = GetRequestsHourlyCost(ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
 		if err.Error() == "requeue" {
 			err = nil
 			return requeue, err
 		}
 		return
 	}
-	hourlyCost *= utilizationPercent
 
-	// Get pod info
-	var info PodInfo
+	// Calculate node's reference costs
+	if info.NodeCpuCoreHourlyCost, info.NodeMemoryMiBHourlyCost, err = GetResourcesRefHourlyCost(
+		ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
+		if err.Error() == "requeue" {
+			err = nil
+			return requeue, err
+		}
+		return
+	}
+
+	// Calculate minimum pod hourly cost basing on resources requests
+	if info.PodRequestsHourlyCost, err = GetRequestsHourlyCost(ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
+		if err.Error() == "requeue" {
+			err = nil
+			return requeue, err
+		}
+		return
+	}
+
 	// Get owner
 	if len(pod.GetOwnerReferences()) > 0 {
 		ownerRef := pod.GetOwnerReferences()[0]
@@ -123,10 +150,9 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	}
 
 	// Update metrics
-	updatePodMetrics(&pod, hourlyCost, &info)
+	createPodMetrics(&pod, &node, &info)
 
-	// Reschedule
-	return requeueMetrics, err
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

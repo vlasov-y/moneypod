@@ -38,17 +38,23 @@ var (
 		Help:      "Node total cost.",
 	}, []string{"name", "type", "capacity", "id", "availability_zone"})
 
-	PodHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	PodCpuHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: "pod",
-		Name:      "hourly_cost",
-		Help:      "Pod hourly cost.",
+		Name:      "cpu_hourly_cost",
+		Help:      "Pod CPU hourly cost for one CPU core.",
 	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
-	PodTotalCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	PodMemoryHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: "pod",
-		Name:      "total_cost",
-		Help:      "Pod total cost.",
+		Name:      "memory_hourly_cost",
+		Help:      "Pod Memory hourly cost for one MiB.",
+	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
+	PodRequestsTotalCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricsNamespace,
+		Subsystem: "pod",
+		Name:      "requests_total_cost",
+		Help:      "Pod resources requests total cost.",
 	}, []string{"name", "namespace", "owner_kind", "owner_name", "node"})
 )
 
@@ -56,6 +62,7 @@ var (
 func RegisterMetrics() {
 	metrics.Registry.MustRegister(NodeHourlyCostMetric)
 	metrics.Registry.MustRegister(NodeTotalCostMetric)
-	metrics.Registry.MustRegister(PodHourlyCostMetric)
-	metrics.Registry.MustRegister(PodTotalCostMetric)
+	metrics.Registry.MustRegister(PodCpuHourlyCostMetric)
+	metrics.Registry.MustRegister(PodMemoryHourlyCostMetric)
+	metrics.Registry.MustRegister(PodRequestsTotalCostMetric)
 }

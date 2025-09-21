@@ -22,6 +22,7 @@ import (
 
 	. "github.com/vlasov-y/moneypod/internal/controller/node"
 	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
+	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
 	. "github.com/vlasov-y/moneypod/internal/types"
 
 	corev1 "k8s.io/api/core/v1"
@@ -92,30 +93,29 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		return
 	}
 
-	// Check if metrics already exist to avoid unnecessary API calls
-	if hasExistingNodeMetrics(&node) {
-		// Update existing metrics with new cost only
-		updateNodeMetrics(&node, hourlyCost)
-	} else {
-		// First time - get full node info
-		var info NodeInfo
-		if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
-			if info, err = aws.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
-				if err.Error() == "requeue" {
-					err = nil
-					return requeue, err
-				}
-				return
+	// First time - get full node info
+	var info NodeInfo
+	if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
+		if info, err = aws.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
+			if err.Error() == "requeue" {
+				err = nil
+				return requeue, err
 			}
-		} else {
-			log.V(1).Info("no info provider implemented", "providerId", node.Spec.ProviderID)
 			return
 		}
-		// And create metrics
-		createNodeMetrics(&node, hourlyCost, &info)
+	} else {
+		if info, err = manual.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
+			if err.Error() == "requeue" {
+				err = nil
+				return requeue, err
+			}
+			return
+		}
 	}
+	// And create metrics
+	createNodeMetrics(&node, hourlyCost, &info)
 
-	return requeueMetrics, err
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

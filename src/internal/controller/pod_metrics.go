@@ -11,21 +11,27 @@ import (
 )
 
 func deletePodMetrics(pod *corev1.Pod) {
-	monitoring.PodHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
-		"name": pod.Name,
+	monitoring.PodCpuHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
+		"name": pod.Name, "namespace": pod.Namespace,
 	})
-	monitoring.PodTotalCostMetric.DeletePartialMatch(prometheus.Labels{
-		"name": pod.Name,
+	monitoring.PodMemoryHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
+		"name": pod.Name, "namespace": pod.Namespace,
+	})
+	monitoring.PodRequestsTotalCostMetric.DeletePartialMatch(prometheus.Labels{
+		"name": pod.Name, "namespace": pod.Namespace,
 	})
 }
 
-func updatePodMetrics(pod *corev1.Pod, cost float64, info *types.PodInfo) {
-	monitoring.PodHourlyCostMetric.WithLabelValues(
+func createPodMetrics(pod *corev1.Pod, node *corev1.Node, info *types.PodInfo) {
+	deletePodMetrics(pod)
+	monitoring.PodCpuHourlyCostMetric.WithLabelValues(
 		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
-	).Set(cost)
-	// Calculate hours passed since creation
+	).Set(info.NodeCpuCoreHourlyCost)
+	monitoring.PodMemoryHourlyCostMetric.WithLabelValues(
+		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
+	).Set(info.NodeMemoryMiBHourlyCost)
 	hours := math.Ceil(time.Since(pod.GetCreationTimestamp().Time).Hours())
-	monitoring.PodTotalCostMetric.WithLabelValues(
+	monitoring.PodRequestsTotalCostMetric.WithLabelValues(
 		pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
-	).Set(cost * hours)
+	).Set(info.PodRequestsHourlyCost * hours)
 }

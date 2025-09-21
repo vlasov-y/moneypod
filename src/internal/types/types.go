@@ -1,10 +1,15 @@
 package types
 
 const (
+	annotationDomain = "moneypod.io"
 	// Node hourly cost
-	AnnotationHourlyCost = "moneypod.io/hourly-cost"
-	// Hourly cost copied from the node where the pod runs
-	AnnotationNodeHourlyCost = "moneypod.io/node-hourly-cost"
+	AnnotationNodeHourlyCost = annotationDomain + "/node-hourly-cost"
+	// Spot or on-demand
+	AnnotationNodeCapacity = annotationDomain + "/capacity"
+	// Instance type: t3a.small, etc.
+	AnnotationNodeType = annotationDomain + "/type"
+	// Node location
+	AnnotationNodeAvailabilityZone = annotationDomain + "/availability-zone"
 	// Max concurrect reconciles per controller
 	MaxConcurrentReconciles = 1
 )
@@ -23,7 +28,7 @@ type NodeInfo struct {
 	// Instance type: t3a.small, etc.
 	Type string
 	// Spot or on-demand
-	Capacity NodeCapacity
+	Capacity string
 	// Availability zone
 	AvailabilityZone string
 }
@@ -35,4 +40,8 @@ type PodInfo struct {
 		Kind string
 		Name string
 	}
+	NodeHourlyCost          float64
+	NodeCpuCoreHourlyCost   float64
+	NodeMemoryMiBHourlyCost float64
+	PodRequestsHourlyCost   float64
 }
