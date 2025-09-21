@@ -1,3 +1,5 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 # Adds namespace to all resources.
 namespace: moneypod-system
 
@@ -9,38 +11,42 @@ namespace: moneypod-system
 namePrefix: moneypod-
 
 # Labels to add to all resources and selectors.
-#labels:
-#- includeSelectors: true
-#  pairs:
-#    someName: someValue
+labels:
+  - includeSelectors: true
+    includeTemplates: true
+    pairs:
+      app.kubernetes.io/name: moneypod
+      app.kubernetes.io/instance: moneypod
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
 
 resources:
-#- ../crd
-- ../rbac
-- ../manager
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
-# crd/kustomization.yaml
-#- ../webhook
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
-#- ../certmanager
-# [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
-#- ../prometheus
-# [METRICS] Expose the controller manager metrics service.
-- metrics_service.yaml
-# [NETWORK POLICY] Protect the /metrics endpoint and Webhook Server with NetworkPolicy.
-# Only Pod(s) running a namespace labeled with 'metrics: enabled' will be able to gather the metrics.
-# Only CR(s) which requires webhooks and are applied on namespaces labeled with 'webhooks: enabled' will
-# be able to communicate with the Webhook Server.
-#- ../network-policy
+  # - ../crd
+  - ../rbac
+  - ../manager
+  ## [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
+  # crd/kustomization.yaml
+  # - ../webhook
+  ## [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
+  # - ../certmanager
+  ## [METRICS] Expose the controller manager metrics service.
+  - metrics_service.yaml
+  ## [NETWORK POLICY] Protect the /metrics endpoint and Webhook Server with NetworkPolicy.
+  ## Only Pod(s) running a namespace labeled with 'metrics: enabled' will be able to gather the metrics.
+  ## Only CR(s) which requires webhooks and are applied on namespaces labeled with 'webhooks: enabled' will
+  ## be able to communicate with the Webhook Server.
+  - ../network-policy
+  ## [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'.
+  # - ../prometheus
 
 # Uncomment the patches line if you enable Metrics
 patches:
-# [METRICS] The following patch will enable the metrics endpoint using HTTPS and the port :8443.
-# More info: https://book.kubebuilder.io/reference/metrics
-- path: manager_metrics_patch.yaml
-  target:
-    kind: Deployment
-
+  []
+  # # [METRICS] The following patch will enable the metrics endpoint using HTTPS and the port :8443.
+  # # More info: https://book.kubebuilder.io/reference/metrics
+  # - path: manager_metrics_https_patch.yaml
+  #   target:
+  #     kind: Deployment
 # Uncomment the patches line if you enable Metrics and CertManager
 # [METRICS-WITH-CERTS] To enable metrics protected with certManager, uncomment the following line.
 # This patch will protect the metrics with certManager self-signed certs.
@@ -54,6 +60,20 @@ patches:
 #  target:
 #    kind: Deployment
 
+replacements:
+  - source:
+      kind: Deployment
+      fieldPath: .spec.template.spec.containers.[name=manager].ports.[name=metrics].containerPort
+    targets:
+      - select:
+          kind: Service
+        fieldPaths:
+          - .spec.ports.[name=metrics].port
+      - select:
+          kind: NetworkPolicy
+          name: allow-metrics
+        fieldPaths:
+          - .spec.ingress.*.ports.*.port
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
 # Uncomment the following replacements to add the cert-manager CA injection annotations
 #replacements:

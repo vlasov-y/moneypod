@@ -1,0 +1,11 @@
+nameReference:
+  - kind: Issuer
+    fieldSpecs:
+      - kind: Certificate
+        path: /spec/issuerRef/name
+  - kind: Certificate
+    fieldSpecs:
+      - kind: Certificate
+        path: /spec/secretName
+      - kind: Deployment
+        path: /spec/secretName

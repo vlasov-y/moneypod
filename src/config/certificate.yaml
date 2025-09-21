@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: metrics
+spec:
+  issuerRef:
+    kind: Issuer
+    name: issuer
+  secretName: metrics
+  dnsNames:
+    - SERVICE.NAMESPACE.svc
+    - SERVICE.NAMESPACE.svc.cluster.local
