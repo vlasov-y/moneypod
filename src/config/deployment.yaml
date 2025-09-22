@@ -71,10 +71,10 @@ spec:
           resources:
             limits:
               cpu: 50m
-              memory: 50Mi
+              memory: 100Mi
             requests:
-              cpu: 10m
-              memory: 30Mi
+              cpu: 50m
+              memory: 50Mi
           volumeMounts:
             - name: metrics-tls
               mountPath: /tls/metrics

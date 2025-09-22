@@ -217,10 +217,12 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	$(KUBECTL) apply -k config
 
 .PHONY: deploy-kind
-deploy-kind: manifests kustomize docker-build ## Deploy controller to the kind cluster
+deploy-kind: manifests kustomize docker-build setup-test-e2e ## Deploy controller to the kind cluster
 	kind load docker-image --name $(KIND_CLUSTER) ${IMG}
 	cd config && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUBECTL) apply -k flux || (sleep 10; $(KUBECTL) apply -k flux)
 	$(KUBECTL) apply -k config
+	$(KUBECTL) rollout restart deployment/moneypod-app -n moneypod
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.

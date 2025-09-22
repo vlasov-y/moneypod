@@ -116,15 +116,6 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 		return
 	}
 
-	// Calculate minimum pod hourly cost basing on resources requests
-	if info.PodRequestsHourlyCost, err = GetRequestsHourlyCost(ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
-		if err.Error() == "requeue" {
-			err = nil
-			return requeue, err
-		}
-		return
-	}
-
 	// Get owner
 	if len(pod.GetOwnerReferences()) > 0 {
 		ownerRef := pod.GetOwnerReferences()[0]

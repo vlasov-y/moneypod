@@ -1,9 +1,6 @@
 package controller
 
 import (
-	"math"
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vlasov-y/moneypod/internal/monitoring"
 	"github.com/vlasov-y/moneypod/internal/types"
@@ -17,7 +14,7 @@ func deletePodMetrics(pod *corev1.Pod) {
 	monitoring.PodMemoryHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
 		"name": pod.Name, "namespace": pod.Namespace,
 	})
-	monitoring.PodRequestsTotalCostMetric.DeletePartialMatch(prometheus.Labels{
+	monitoring.PodRequestsHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
 		"name": pod.Name, "namespace": pod.Namespace,
 	})
 }
@@ -30,8 +27,7 @@ func createPodMetrics(pod *corev1.Pod, info *types.PodInfo) {
 	monitoring.PodMemoryHourlyCostMetric.WithLabelValues(
 		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
 	).Set(info.NodeMemoryMiBHourlyCost)
-	hours := math.Ceil(time.Since(pod.GetCreationTimestamp().Time).Hours())
-	monitoring.PodRequestsTotalCostMetric.WithLabelValues(
+	monitoring.PodRequestsHourlyCostMetric.WithLabelValues(
 		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
-	).Set(info.PodRequestsHourlyCost * hours)
+	).Set(info.PodRequestsHourlyCost)
 }
