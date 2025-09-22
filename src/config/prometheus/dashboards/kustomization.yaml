@@ -5,4 +5,4 @@ generatorOptions:
 configMapGenerator:
   - name: dashboards
     files:
-      - topk.json
+      - main.json
