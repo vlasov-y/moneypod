@@ -10,7 +10,7 @@ spec:
         - record: moneypod:pod_cpu_total_cost
           expr: |
             (pod_cpu_usage_seconds_total / 3600)
-            * on(pod, namespace) group_left (owner_kind, owner_name)
+            * on(pod, namespace, node) group_left (owner_kind, owner_name)
             moneypod_pod_cpu_hourly_cost
 
         - record: moneypod:pod_memory_total_cost
@@ -22,22 +22,24 @@ spec:
                   container_memory_working_set_bytes{image!="", container!=""}
                 ) / 1024 / 1024 [5m]
               )
-            * on(namespace, pod) group_left(owner_kind, owner_name)
+            * on(namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_memory_hourly_cost
 
         - record: moneypod:pod_usage_total_cost
           expr: |
-            moneypod:pod_cpu_total_cost + on(pod, namespace, owner_kind, owner_name) moneypod:pod_memory_total_cost
+            moneypod:pod_cpu_total_cost
+            + on(pod, namespace, owner_kind, owner_name, node)
+            moneypod:pod_memory_total_cost
 
         - record: moneypod:pod_requests_total_cost
           expr: |
             ((time() - kube_pod_created) / 3600)
-            * on(namespace, pod) group_left(owner_kind, owner_name)
+            * on(namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_requests_hourly_cost
 
         - record: moneypod:pod_effective_total_cost
           expr: |
-            max by (namespace, pod, owner_kind, owner_name) (
+            max by (namespace, pod, owner_kind, owner_name, node) (
               moneypod:pod_usage_total_cost
               or
               moneypod:pod_requests_total_cost

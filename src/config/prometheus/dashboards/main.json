@@ -309,7 +309,7 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": 3600000,
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -317,7 +317,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": 3600000,
+            "spanNulls": false,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -486,7 +486,7 @@
               "tooltip": false,
               "viz": false
             },
-            "insertNulls": 3600000,
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -494,7 +494,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": 3600000,
+            "spanNulls": false,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -590,6 +590,120 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red"
+              },
+              {
+                "color": "red",
+                "value": 0.25
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "yellow",
+                "value": 0.75
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_VICTORIAMETRICS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (owner_kind, owner_name) (\n    moneypod:pod_usage_total_cost{namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    / on (namespace, pod) group_left (owner_kind, owner_name)\n    (moneypod:pod_requests_total_cost{owner_kind!=\"Node\"} > 0)\n) < 1",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{owner_kind}}/{{owner_name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Application requests too big",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_VICTORIAMETRICS}"
+      },
+      "description": "Closer to 100% is better. X percent means that we use only X percent of the node.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
             "insertNulls": 3600000,
             "lineInterpolation": "linear",
             "lineWidth": 1,
@@ -633,12 +747,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
+        "h": 9,
+        "w": 12,
+        "x": 12,
         "y": 24
       },
-      "id": 13,
+      "id": 14,
       "options": {
         "legend": {
           "calcs": [
@@ -665,18 +779,19 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (owner_kind, owner_name) (\n    moneypod:pod_usage_total_cost{namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    / on (namespace, pod) group_left (owner_kind, owner_name)\n    (moneypod:pod_requests_total_cost{owner_kind!=\"Node\"} > 0)\n) < 1",
+          "expr": "sum by (node) (moneypod:pod_usage_total_cost{namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n/ on (node) (moneypod:node_total_cost)",
           "format": "time_series",
           "instant": false,
-          "legendFormat": "{{owner_kind}}/{{owner_name}}",
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Application requests too big",
+      "title": "Underutilized nodes",
       "type": "timeseries"
     }
   ],
+  "refresh": "",
   "schemaVersion": 41,
   "tags": [],
   "templating": {
@@ -785,13 +900,13 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "MoneyPod",
   "uid": "2ac3cfa1-7544-4bf7-ad3f-221cb8511154",
-  "version": 8,
+  "version": 10,
   "weekStart": ""
 }
