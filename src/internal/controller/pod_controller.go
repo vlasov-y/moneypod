@@ -32,7 +32,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // PodReconciler reconciles a Pod object
@@ -153,9 +155,45 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Register index: spec.nodeName → pod
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(),
+		&corev1.Pod{}, ".spec.nodeName",
+		func(obj client.Object) []string {
+			pod := obj.(*corev1.Pod)
+			if pod.Spec.NodeName == "" {
+				return nil
+			}
+			return []string{pod.Spec.NodeName}
+		}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: MaxConcurrentReconciles}).
+		// Watch Nodes, and enqueue Pods that are scheduled there
+		Watches(
+			&corev1.Node{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				node := obj.(*corev1.Node)
+				var requests []reconcile.Request
+				// List Pods on this node
+				var pods corev1.PodList
+				if err := r.Client.List(ctx, &pods, client.MatchingFields{".spec.nodeName": node.Name}); err != nil {
+					return nil
+				}
+				// Prepare reconciliation requests
+				for _, pod := range pods.Items {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: types.NamespacedName{
+							Namespace: pod.Namespace,
+							Name:      pod.Name,
+						},
+					})
+				}
+				return requests
+			}),
+		).
 		Named("pod").
 		Complete(r)
 }

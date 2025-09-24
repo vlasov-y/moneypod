@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"strings"
+	"time"
 
 	. "github.com/vlasov-y/moneypod/internal/controller/node"
 	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
@@ -115,7 +116,8 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	// And create metrics
 	createNodeMetrics(&node, hourlyCost, &info)
 
-	return
+	// Periodic cost refresh
+	return ctrl.Result{RequeueAfter: time.Hour}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
