@@ -17,10 +17,6 @@ func GetNodeHourlyCost(ctx context.Context, c client.Client, r record.EventRecor
 	log := logf.FromContext(ctx)
 	hourlyCost = -1
 
-	if pod.Spec.NodeName == "" {
-		return hourlyCost, errors.New("pod is not yet scheduled")
-	}
-
 	nodeAnnotations := node.GetAnnotations()
 	if nodeAnnotations == nil {
 		nodeAnnotations = map[string]string{}

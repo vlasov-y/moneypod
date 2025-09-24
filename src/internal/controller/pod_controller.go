@@ -65,6 +65,11 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	}
 	log = log.WithValues("pod", pod.Name)
 
+	// Pod is not yet scheduled
+	if pod.Spec.NodeName == "" {
+		return requeue, err
+	}
+
 	// Handle deletion
 	if pod.GetDeletionTimestamp() != nil {
 		deletePodMetrics(&pod)

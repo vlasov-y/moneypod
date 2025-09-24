@@ -40,10 +40,13 @@ spec:
           command:
             - /manager
           args:
-            - --leader-elect
+            - --leader-elect=true
             - --health-probe-bind-address=:8081
             - --metrics-bind-address=:8443
             - --metrics-cert-path=/tls/metrics
+            - --zap-devel=false
+            - --zap-log-level=info
+            - --zap-encoder=console
           image: controller
           imagePullPolicy: IfNotPresent
           ports:

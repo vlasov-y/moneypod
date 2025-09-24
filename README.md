@@ -1,17 +1,58 @@
-# node-role-labeler
+# moneypod
 
-Operator that monitors nodes labels and sync custom role labels with official Kubernetes ones.
+Operator that monitors node's price and calculate various costs (per pod, per application, per namespace, etc.).
 
 ## Description
 
-Kubernetes does not allow kubelet to assign `node-role.kubernetes.io/*` labels, so nodes cannot self-identify. With this operator, you can create `node-role.cluster.local/*` labels and the operator will automatically sync them with corresponding `node-role.kubernetes.io/*` labels and vice versa. You can change the default custom prefix using the environment variable `NODE_ROLE_PREFIX`, which is set to `node-role.cluster.local/` by default.
+Operator watches Nodes and Pods. First, it identifies Node's price using implemented providers.
+
+### Providers
+
+Price is saved to the annotation `moneypod.io/node-hourly-cost` on the Node object.
+If price cannot be identified, annotation is set to `unknown`.
+
+#### AWS
+
+Works if Node's `.spec.providerID` matches `aws:///<zone>/<id>`. Example: `aws:///eu-central-1a/i-02634bb78e730ced1`.
+Operator goes to the AWS using Pod Identity and describes the instance.
+
+- If the instance is spot - prices is take from the respective spot request.
+- Else - price is taken from Pricing API for particular instance type in the particular region.
+
+#### Manual
+
+If no other providers requirements are met - manual provider is used.
+User has to set these annotations for each Node.
+
+- `moneypod.io/node-hourly-cost` - hourly Node price in USD
+- `moneypod.io/capacity` - can be *spot*, *on-demand* or any custom value
+- `moneypod.io/type` - any value like instance type in AWS
+- `moneypod.io/availability-zone` - any value for availability zone
+
+It is possible to *bind* annotations (except of the node-hourly-cost) to other label or annotation. See the example below.
+
+```yaml
+apiVersion: v1
+kind: Node
+metadata:
+  name: node
+  annotations:
+    moneypod.io/node-hourly-cost: "0.3456"
+    moneypod.io/capacity: annotation=my-custom-label-for-capacity
+    moneypod.io/type: label=node.kubernetes.io/instance-type
+    moneypod.io/availability-zone: label=topology.kubernetes.io/zone
+    my-custom-annotation-for-capacity: spot
+  labels:
+    node.kubernetes.io/instance-type: t3a.2xlarge
+    topology.kubernetes.io/zone: eu-central-1b
+```
 
 ## Getting Started
 
 Install using kustomize.
 
 ```shell
-kubectl apply -f https://github.com/vlasov-y/node-role-labeler/releases/latest/download/install.yaml
+kubectl apply -f https://github.com/vlasov-y/moneypod/releases/latest/download/install.yaml
 ```
 
 ## CLI args
@@ -19,18 +60,36 @@ kubectl apply -f https://github.com/vlasov-y/node-role-labeler/releases/latest/d
 There is a list of CLI args you can append to manager args in the deployment to tune the behaviour.
 
 ```shell
+--enable-http2
+    If set, HTTP/2 will be enabled for the metrics and webhook servers
 --health-probe-bind-address string
     The address the probe endpoint binds to. (default ":8081")
 --kubeconfig string
     Paths to a kubeconfig. Only required if out-of-cluster.
 --leader-elect
     Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.
+--metrics-bind-address string
+    The address the metrics endpoint binds to. Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service. (default "0")
+--metrics-cert-key string
+    The name of the metrics server key file. (default "tls.key")
+--metrics-cert-name string
+    The name of the metrics server certificate file. (default "tls.crt")
+--metrics-cert-path string
+    The directory that contains the metrics server certificate.
+--metrics-secure
+    If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead. (default true)
+--webhook-cert-key string
+    The name of the webhook key file. (default "tls.key")
+--webhook-cert-name string
+    The name of the webhook certificate file. (default "tls.crt")
+--webhook-cert-path string
+    The directory that contains the webhook certificate.
 --zap-devel
     Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn). Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default true)
 --zap-encoder value
     Zap log encoding (one of 'json' or 'console')
 --zap-log-level value
-    Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
+    Zap Level to configure the verbosity of logging. Can be one of 'debug', 'info', 'error', 'panic'or any integer value > 0 which corresponds to custom debug levels of increasing verbosity
 --zap-stacktrace-level value
     Zap Level at and above which stacktraces are captured (one of 'info', 'error', 'panic').
 --zap-time-encoding value
@@ -43,20 +102,9 @@ Example kustomization to add arguments.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - https://github.com/vlasov-y/node-role-labeler/releases/latest/download/install.yaml
-patches:
-  - patch: |-
-      - op: add
-        path: /spec/template/spec/containers/0/args
-        value:
-          - --leader-elect=true
-          - --zap-devel=false
-          - --zap-encoder=console
-          - --zap-log-level=info
-    target:
-      kind: Deployment
-      name: node-role-labeler.+
+  - https://github.com/vlasov-y/moneypod/releases/latest/download/install.yaml
 ## Uncomment if you want to disable creation of custom namespace and plan to use system one instead
+# patches:
 #  - patch: |-
 #      $patch: delete
 #      apiVersion: v1
@@ -75,12 +123,9 @@ These annotation are set on nodes.
 
 | Name                          | Default | Description                                                       |
 | ----------------------------- | ------- | ----------------------------------------------------------------- |
-| `node-role-labeler.io/state`  | *JSON*  | Controlled by operator, do not change                             |
-| `node-role-labeler.io/enable` | *true*  | Set to "false" in order to disable operator for a particular node |
+| `moneypod.io/hourly-price`  | *JSON*  | Controlled by operator, do not change                             |
+| `moneypod.io/enable` | *true*  | Set to "false" in order to disable operator for a particular node |
 
-## Demo
-
-[![asciicast](https://asciinema.org/a/679600.svg)](https://asciinema.org/a/679600)
 
 ## License
 
