@@ -1,0 +1,71 @@
+version: "3"
+
+set: [pipefail]
+
+includes:
+  tools: taskfile.tools.yaml
+  generate: taskfile.generate.yaml
+  kind: taskfile.kind.yaml
+
+env:
+  GO111MODULE: on
+  TASK_TEMP_DIR: '{{ .TASK_TEMP_DIR | default (print .ROOT_DIR "/.task")  }}'
+  GOBIN:
+    sh: |-
+      if [ -n "$(go env GOBIN)" ]; then
+        go env GOBIN
+      else
+        echo "$(go env GOPATH)/bin"
+      fi
+
+vars:
+  name: moneypod
+  imageRepository: ghcr.io/vlasov-y/moneypod
+  localBin: "{{ .ROOT_DIR }}/bin"
+  kubeconfig: '{{ print .ROOT_DIR "/kubeconfig.yaml" }}'
+  envtestVersion: latest
+  manifestPath:
+    map:
+      crds: "{{ .ROOT_DIR }}/config/crds"
+  bin:
+    map:
+      containerTool: docker
+      controllerGen: '{{ print .localBin "/controller-gen" | squote }}'
+      kind: '{{ print .localBin "/kind" | squote }}'
+      kubectl: '{{ print .localBin "/kubectl" | squote }} --kubeconfig {{ squote .kubeconfig }}'
+      kustomize: '{{ print .localBin "/kustomize" | squote }}'
+      lint: '{{ print .localBin "/golangci-lint" | squote }}'
+      setupEnvtest: '{{ print .localBin "/setup-envtest" | squote }}'
+  kind:
+    map:
+      name: "{{ .name }}"
+      config: |-
+        apiVersion: kind.x-k8s.io/v1alpha4
+        kind: Cluster
+        nodes:
+        - role: control-plane
+        - role: worker
+          labels:
+            node-role.cluster.local/worker: ""
+
+tasks:
+  default:
+    cmds:
+      - echo {{ .TASK_TEMP_DIR }}
+      - echo $TASK_TEMP_DIR
+
+  clean:
+    desc: Clean everything possible
+    deps: [tools:clean, kind:clean]
+    cmds:
+      - rm -rvf {{ squote .TASK_TEMP_DIR }} cover.out
+
+  test-unit:
+    desc: Run unit tests
+    deps: [tools:install]
+    cmds:
+      - task: generate:all
+      - silent: true
+        cmd: >-
+          KUBEBUILDER_ASSETS=$({{ squote .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path {{ squote .envtestVersion }})
+          go test $(go list ./... | grep -v /e2e) -coverprofile cover.out -v -ginkgo.v

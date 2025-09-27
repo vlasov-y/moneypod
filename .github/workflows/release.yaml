@@ -33,7 +33,7 @@ jobs:
         working-directory: src/config/manager
 
       - name: Kustomize Build
-        run: kustomize build src/config/default | tee install.yaml
+        run: kustomize build src/config | tee install.yaml
 
       - name: Release
         uses: softprops/action-gh-release@v2

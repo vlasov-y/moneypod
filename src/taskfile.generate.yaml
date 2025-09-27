@@ -1,0 +1,28 @@
+version: "3"
+
+set: [pipefail]
+
+tasks:
+  all:
+    desc: Aggregator for manifests, code, fmt and vet
+    deps: [manifests, code, fmt, vet]
+
+  manifests:
+    desc: Generate WebhookConfiguration, Role and CustomResourceDefinitions
+    cmds:
+      - '{{ .bin.controllerGen }} rbac:roleName=app crd webhook paths="./..." output:crd:artifacts:config={{ .manifestPath.crds }}'
+
+  code:
+    desc: Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods
+    cmds:
+      - '{{ .bin.controllerGen }} object:headerFile="hack/boilerplate.go.txt" paths="./..."'
+
+  fmt:
+    desc: Run go fmt against the code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet against the code
+    cmds:
+      - go vet ./...
