@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: app
+spec:
+  activeDeadlineSeconds: 300
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: app
+      securityContext:
+        fsGroup: 65534
+      containers:
+        - name: kubectl
+          image: alpine/kubectl:1.34.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+          command: ["/bin/ash", "-euo", "pipefail", "-c"]
+          args:
+            - |-
+              kubectl get nodes -l node-role.cluster.local/control-plane="" | \
+              cut -d/ -f2 | \
+              xargs -I% kubectl annotate --overwrite node % \
+                moneypod.io/availability-zone=eu-central-1 \
+                moneypod.io/capacity=spot \
+                moneypod.io/node-hourly-cost=5.0 \
+                moneypod.io/type=t3a.medium
+              kubectl get nodes -l node-role.cluster.local/worker="" | \
+              cut -d/ -f2 | \
+              xargs -I% kubectl annotate --overwrite node % \
+                moneypod.io/availability-zone=us-east-1 \
+                moneypod.io/capacity=on-demand \
+                moneypod.io/node-hourly-cost=7.5 \
+                moneypod.io/type=c5.xlarge
