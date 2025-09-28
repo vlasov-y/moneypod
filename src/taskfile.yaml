@@ -52,25 +52,10 @@ vars:
             node-role.cluster.local/worker: ""
 
 tasks:
-  default:
-    cmds:
-      - echo {{ .TASK_TEMP_DIR }}
-      - echo $TASK_TEMP_DIR
-
   clean:
-    desc: Clean everything possible
+    desc: Remove all build artifacts
     cmds:
       - task: kind:clean
       - task: test:clean
       - task: tools:clean
       - rm -rvf {{ squote .TASK_TEMP_DIR }}
-
-  test-unit:
-    desc: Run unit tests
-    deps: [tools:install]
-    cmds:
-      - task: generate:all
-      - silent: true
-        cmd: >-
-          KUBEBUILDER_ASSETS=$({{ squote .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path {{ squote .envtestVersion }})
-          go test $(go list ./... | grep -v /e2e) -coverprofile cover.out -v -ginkgo.v

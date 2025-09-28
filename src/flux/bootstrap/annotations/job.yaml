@@ -25,20 +25,19 @@ spec:
             readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: 65534
-          command: ["/bin/ash", "-euo", "pipefail", "-c"]
+            runAsGroup: 65534
+          command: ["/bin/ash", "-exuo", "pipefail", "-c"]
           args:
             - |-
-              kubectl get nodes -l node-role.cluster.local/control-plane="" | \
-              cut -d/ -f2 | \
-              xargs -I% kubectl annotate --overwrite node % \
+              kubectl get nodes -o name -l node-role.cluster.local/control-plane | \
+              xargs -I% kubectl annotate --overwrite % \
                 moneypod.io/availability-zone=eu-central-1 \
-                moneypod.io/capacity=spot \
+                moneypod.io/capacity=on-demand \
                 moneypod.io/node-hourly-cost=5.0 \
                 moneypod.io/type=t3a.medium
-              kubectl get nodes -l node-role.cluster.local/worker="" | \
-              cut -d/ -f2 | \
-              xargs -I% kubectl annotate --overwrite node % \
+              kubectl get nodes -o name -l node-role.cluster.local/worker | \
+              xargs -I% kubectl annotate --overwrite % \
                 moneypod.io/availability-zone=us-east-1 \
-                moneypod.io/capacity=on-demand \
-                moneypod.io/node-hourly-cost=7.5 \
+                moneypod.io/capacity=spot \
+                moneypod.io/node-hourly-cost=10.0 \
                 moneypod.io/type=c5.xlarge

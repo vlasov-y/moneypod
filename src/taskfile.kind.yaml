@@ -18,19 +18,35 @@ tasks:
       - "{{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}"
 
   bootstrap:
-    desc: Install flux, cert-manager, prometheus-crds etc.
+    desc: Install flux, cert-manager, prometheus-crds and bootstrap job
     deps: [create]
     cmds:
       - "{{ .bin.kubectl }} apply --wait -f https://github.com/fluxcd/flux2/releases/latest/download/install.yaml"
+      - "{{ .bin.kubectl }} wait -n flux-system --for=condition=Available deployments --all --timeout=5m"
       - "{{ .bin.kubectl }} apply --wait -k flux/bootstrap"
+      - "{{ .bin.kubectl }} wait -n cert-manager --for=condition=Available deployments --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n default --for=condition=Complete jobs --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n kube-system --for=condition=Available deployments --all --timeout=5m"
+
+  victoria-metrics:
+    desc: Same as bootstrap + install victoria-metrics and grafana
+    deps: [bootstrap]
+    cmds:
+      - "{{ .bin.kubectl }} apply --wait -k flux/victoria-metrics"
+      - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Ready helmreleases --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Available deployments --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n victoria-metrics --for='jsonpath={.status.updateStatus}=operational' vmsingles,vmalerts,vmagents --all --timeout=10m"
+      - "echo 'info: default Grafana credentials are admin:admin'"
 
   kubeconfig:
     desc: Export kubeconfig to {{ .kubeconfig }}
+    deps: [create]
     cmds:
       - "{{ .bin.kind }} export kubeconfig --name {{ .kind.name }} --kubeconfig {{ squote .kubeconfig }}"
 
   load:
     desc: Load image into cluster
+    deps: [create]
     cmds:
       - "{{ .bin.kind }} load docker-image {{ .image }} --name {{ .kind.name }}"
 
