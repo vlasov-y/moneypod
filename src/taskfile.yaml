@@ -3,9 +3,10 @@ version: "3"
 set: [pipefail]
 
 includes:
-  tools: taskfile.tools.yaml
   generate: taskfile.generate.yaml
   kind: taskfile.kind.yaml
+  test: taskfile.test.yaml
+  tools: taskfile.tools.yaml
 
 env:
   GO111MODULE: on
@@ -44,6 +45,8 @@ vars:
         kind: Cluster
         nodes:
         - role: control-plane
+          labels:
+            node-role.cluster.local/control-plane: ""
         - role: worker
           labels:
             node-role.cluster.local/worker: ""
@@ -56,9 +59,11 @@ tasks:
 
   clean:
     desc: Clean everything possible
-    deps: [tools:clean, kind:clean]
     cmds:
-      - rm -rvf {{ squote .TASK_TEMP_DIR }} cover.out
+      - task: kind:clean
+      - task: test:clean
+      - task: tools:clean
+      - rm -rvf {{ squote .TASK_TEMP_DIR }}
 
   test-unit:
     desc: Run unit tests

@@ -2,18 +2,25 @@ version: "3"
 
 set: [pipefail]
 
+includes:
+  tools:
+    taskfile: taskfile.tools.yaml
+    internal: true
+
 tasks:
   all:
     desc: Aggregator for manifests, code, fmt and vet
     deps: [manifests, code, fmt, vet]
 
   manifests:
-    desc: Generate WebhookConfiguration, Role and CustomResourceDefinitions
+    desc: Generate WebhookConfiguration, ClusterRole and CustomResourceDefinitions
+    deps: [tools:controller-gen]
     cmds:
       - '{{ .bin.controllerGen }} rbac:roleName=app crd webhook paths="./..." output:crd:artifacts:config={{ .manifestPath.crds }}'
 
   code:
     desc: Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods
+    deps: [tools:controller-gen]
     cmds:
       - '{{ .bin.controllerGen }} object:headerFile="hack/boilerplate.go.txt" paths="./..."'
 

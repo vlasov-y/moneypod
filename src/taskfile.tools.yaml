@@ -3,17 +3,16 @@ version: "3"
 set: [pipefail]
 
 tasks:
-  install:
+  all:
     desc: Installs CLI tools to {{ .localBin }}
     env:
       GOBIN: "{{ .localBin }}"
     cmds:
-      - mkdir -p {{ squote .localBin }}
+      - mkdir -p {{ squote .localBin }} {{ squote .TASK_TEMP_DIR }}
       - cmd: go install {{ squote .ITEM }}
         for:
           - github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
           - sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-          - sigs.k8s.io/controller-tools/cmd/controller-gen@latest
           - sigs.k8s.io/kind@latest
           - sigs.k8s.io/kustomize/kustomize/v5@latest
       - >-
@@ -23,12 +22,21 @@ tasks:
         xargs realpath --relative-to={{ squote .localBin }} <{{ print .TASK_TEMP_DIR "/envtest-path" | squote }} |
         xargs printf "%s/kubectl" | xargs -I{} ln -fs {} {{ print .localBin "/kubectl" | squote }}
     status:
-      - "{{ .bin.controllerGen }} --version"
       - "{{ .bin.kind }} version"
       - "{{ .bin.kubectl }} version --client"
       - "{{ .bin.kustomize }} version"
       - "{{ .bin.lint }} --version"
       - "{{ .bin.setupEnvtest }} version"
+
+  controller-gen:
+    desc: Installs controller-gen to {{ .bin.controllerGen }}
+    env:
+      GOBIN: "{{ .localBin }}"
+    cmds:
+      - mkdir -p {{ squote .localBin }}
+      - go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+    status:
+      - "{{ .bin.controllerGen }} --version"
 
   clean:
     desc: Remove CLI tools from {{ .localBin }}
@@ -36,3 +44,5 @@ tasks:
       - cmd: chmod 0755 -Rv {{ squote .localBin }}
         silent: true
       - rm -rvf {{ squote .localBin }}
+    status:
+      - test ! -d {{ squote .localBin }}

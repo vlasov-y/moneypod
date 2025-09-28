@@ -10,24 +10,39 @@ tasks:
     cmds:
       - cmd: echo {{ b64enc .kind.config }} | base64 -d >{{ .kindConfigPath }}
         silent: true
-      - |-
-        if ! kind get clusters | grep -qF {{ .kind.name }}; then
-          KUBECONFIG={{ squote .kubeconfig }} kind create cluster --name {{ .kind.name }} --config {{ .kindConfigPath }}
-        fi
+      - >-
+        KUBECONFIG={{ squote .kubeconfig }} {{ .bin.kind }} create cluster
+        --name {{ .kind.name }} --config {{ .kindConfigPath }}
       - chmod 0600 {{ squote .kubeconfig }}
+    status:
+      - "{{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}"
+
+  bootstrap:
+    desc: Install flux, cert-manager, prometheus-crds etc.
+    deps: [create]
+    cmds:
+      - "{{ .bin.kubectl }} apply --wait -f https://github.com/fluxcd/flux2/releases/latest/download/install.yaml"
+      - "{{ .bin.kubectl }} apply --wait -k flux/bootstrap"
 
   kubeconfig:
     desc: Export kubeconfig to {{ .kubeconfig }}
     cmds:
-      - kind export kubeconfig --name {{ .kind.name }} --kubeconfig {{ squote .kubeconfig }}
+      - "{{ .bin.kind }} export kubeconfig --name {{ .kind.name }} --kubeconfig {{ squote .kubeconfig }}"
 
   load:
     desc: Load image into cluster
     cmds:
-      - kind load docker-image {{ .image }} --name {{ .kind.name }}
+      - "{{ .bin.kind }} load docker-image {{ .image }} --name {{ .kind.name }}"
 
   clean:
     desc: Delete the KIND cluster
     cmds:
-      - kind delete cluster --name {{ .kind.name }}
+      - cmd: "{{ .bin.kind }} delete cluster --name {{ .kind.name }} 2>/dev/null"
+        ignore_error: true
       - rm -f {{ .kubeconfig }}
+    status:
+      - |-
+        if [ -f {{ .bin.kind }} ]; then
+          {{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}
+        fi
+      - test ! -f {{ .kubeconfig }}

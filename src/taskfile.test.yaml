@@ -1,0 +1,28 @@
+version: "3"
+
+set: [pipefail]
+
+includes:
+  generate:
+    taskfile: taskfile.generate.yaml
+    internal: true
+  tools:
+    taskfile: taskfile.tools.yaml
+    internal: true
+
+tasks:
+  unit:
+    desc: Run unit tests
+    deps: [tools:all, generate:all]
+    cmds:
+      - silent: true
+        cmd: >-
+          KUBEBUILDER_ASSETS=$({{ squote .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path {{ squote .envtestVersion }})
+          go test $(go list ./... | grep -v /e2e) -coverprofile cover.out -v -ginkgo.v
+
+  clean:
+    desc: Remove cover.out
+    cmds:
+      - rm -rvf cover.out
+    status:
+      - test ! -f cover.out
