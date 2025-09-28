@@ -3,6 +3,7 @@ version: "3"
 set: [pipefail]
 
 includes:
+  docker: taskfile.docker.yaml
   generate: taskfile.generate.yaml
   kind: taskfile.kind.yaml
   test: taskfile.test.yaml
@@ -21,12 +22,13 @@ env:
 
 vars:
   name: moneypod
-  imageRepository: ghcr.io/vlasov-y/moneypod
+  image: ghcr.io/vlasov-y/moneypod
   localBin: "{{ .ROOT_DIR }}/bin"
   kubeconfig: '{{ print .ROOT_DIR "/kubeconfig.yaml" }}'
   envtestVersion: latest
   manifestPath:
     map:
+      root: "{{ .ROOT_DIR }}/config"
       crds: "{{ .ROOT_DIR }}/config/crds"
   bin:
     map:
@@ -59,3 +61,31 @@ tasks:
       - task: test:clean
       - task: tools:clean
       - rm -rvf {{ squote .TASK_TEMP_DIR }}
+
+  install-crds:
+    desc: Install operator CRDs
+    deps: [generate:all]
+    cmds:
+      - "{{ .bin.kubectl }} apply --wait -k {{ squote .manifestPath.crds }}"
+    status:
+      - test ! -d {{ squote .manifestPath.crds }}
+
+  install-operator:
+    desc: Install operator
+    deps: [install-crds]
+    cmds:
+      - "{{ .bin.kubectl }} apply --wait -k {{ squote .manifestPath.root }}"
+      - "{{ .bin.kubectl }} -n {{ squote .name }} wait --for=condition=Available deployments --all"
+
+  uninstall-crds:
+    desc: Uninstall operator CRDs
+    cmds:
+      - "{{ .bin.kubectl }} delete --wait -k {{ squote .manifestPath.crds }}"
+    status:
+      - test ! -d {{ squote .manifestPath.crds }}
+
+  uninstall-operator:
+    desc: Uninstall operator
+    deps: [uninstall-crds]
+    cmds:
+      - "{{ .bin.kubectl }} delete --wait -k {{ squote .manifestPath.root }}"

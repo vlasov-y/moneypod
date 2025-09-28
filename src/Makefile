@@ -132,16 +132,6 @@ setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
 			$(KIND) create cluster --name ${KIND_CLUSTER} ;; \
 	esac
 
-.PHONY: bootstrap-test-e2e
-bootstrap-test-e2e:
-	$(KUBECTL) apply --wait -f https://github.com/fluxcd/flux2/releases/latest/download/install.yaml
-
-
-	cd config && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUBECTL) apply -k flux || (sleep 10; $(KUBECTL) apply -k flux)
-	$(KUBECTL) apply -k config
-	$(KUBECTL) rollout restart deployment/moneypod-app -n moneypod
-
 .PHONY: load-image-test-e2e
 load-image-test-e2e: docker-build
 	$(KIND) load docker-image --name ${KIND_CLUSTER} ${IMG}
