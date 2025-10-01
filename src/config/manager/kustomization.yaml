@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: moneypod
+namePrefix: moneypod-
+resources:
+  - certificate.yaml
+  - deployment.yaml
+  - namespace.yaml
+  - network-policies
+  - prometheus
+  - rbac
+  - service.yaml
+configurations:
+  - kustomizeconfig.yaml
+images:
+  - name: controller
+    newName: ghcr.io/vlasov-y/moneypod
+labels:
+  - includeSelectors: true
+    includeTemplates: true
+    pairs:
+      app.kubernetes.io/instance: moneypod
+      app.kubernetes.io/name: moneypod
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
+replacements:
+  - source:
+      kind: Service
+    targets:
+      - select:
+          kind: ServiceMonitor
+        fieldPaths:
+          - .spec.endpoints.[path=/metrics].tlsConfig.serverName
+        options:
+          delimiter: .
+          index: 0
+      - select:
+          kind: Certificate
+        fieldPaths:
+          - .spec.dnsNames.*
+        options:
+          delimiter: .
+          index: 0
+
+  - source:
+      fieldPath: .metadata.namespace
+      kind: Service
+    targets:
+      - select:
+          kind: ServiceMonitor
+        fieldPaths:
+          - .spec.endpoints.[path=/metrics].tlsConfig.serverName
+        options:
+          delimiter: .
+          index: 1
+      - select:
+          kind: Certificate
+        fieldPaths:
+          - .spec.dnsNames.1
+          - .spec.dnsNames.2
+          - .spec.dnsNames.3
+        options:
+          delimiter: .
+          index: 1

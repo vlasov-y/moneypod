@@ -15,5 +15,7 @@ spec:
     name: issuer
   secretName: metrics
   dnsNames:
+    - SERVICE
+    - SERVICE.NAMESPACE
     - SERVICE.NAMESPACE.svc
     - SERVICE.NAMESPACE.svc.cluster.local

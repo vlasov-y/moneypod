@@ -18,43 +18,78 @@ package e2e
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"io"
+	"net/http"
 	"os/exec"
 	"path"
+	"strconv"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/vlasov-y/moneypod/test/utils"
+	promclient "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
+	. "github.com/vlasov-y/moneypod/internal/types"
+	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/describe"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	namespace = "moneypod"
+	namespace            = "moneypod"
+	serviceAccountName   = "moneypod-app"
+	metricsNodePort      = 30000
+	metricsTLSServerName = "moneypod-metrics"
 )
-
-// // namespace where the project is deployed in
-// const namespace = "moneypod"
-
-// // serviceAccountName created for the project
-// const serviceAccountName = "moneypod-app"
-
-// // metricsServiceName is the name of the metrics service of the project
-// const metricsServiceName = "moneypod-metrics"
-
-// // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data
-// const metricsRoleBindingName = "moneypod-app"
 
 var _ = Describe("Manager", Ordered, func() {
 	var podName string
 	var c client.Client
+	var cs *kubernetes.Clientset
 	var rc *rest.Config
 	var err error
 	var cmd *exec.Cmd
+	var metricsCAPool *x509.CertPool
+	var metricsBearerToken string
+
+	var getPrometheusMetrics = func() (metrics string, err error) {
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:    metricsCAPool,
+					ServerName: metricsTLSServerName},
+			},
+		}
+		req, err := http.NewRequest("GET", fmt.Sprintf("https://localhost:%d/metrics", metricsNodePort), nil)
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", metricsBearerToken))
+		resp, err := client.Do(req)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		return string(body), err
+	}
+
+	var parsePrometheusMetrics = func(metricsText string) (map[string]*promclient.MetricFamily, error) {
+		parser := expfmt.NewTextParser(model.UTF8Validation)
+		reader := strings.NewReader(metricsText)
+		return parser.TextToMetricFamilies(reader)
+	}
 
 	// Before running the tests, set up the environment by creating the namespace,
 	// enforce the restricted security policy to the namespace, installing CRDs,
@@ -62,22 +97,69 @@ var _ = Describe("Manager", Ordered, func() {
 	BeforeAll(func() {
 		By("Installing operator to the cluster")
 		cmd = exec.Command("task", "install-operator")
-		_, err = utils.Run(cmd)
+		_, err = run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to install the operator")
 
-		By("Initializing Kubernetes client")
+		By("Initializing Kubernetes clients")
 		var cwd string
-		cwd, err = utils.GetProjectDir()
+		cwd, err = getProjectDir()
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get project dir")
 		rc, err = clientcmd.BuildConfigFromFlags("", path.Join(cwd, "kubeconfig.yaml"))
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to load kubeconfig")
 		c, err = client.New(rc, client.Options{})
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to create the client")
+		cs, err = kubernetes.NewForConfig(rc)
+		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to create the clientset")
+
+		By("Finding operator pod name")
+		var pod corev1.Pod
 		pods := &corev1.PodList{}
 		err = c.List(context.Background(), pods, client.InNamespace(namespace))
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to list pods in the namespace")
 		Expect(len(pods.Items)).To(Equal(1), "expected eactly 1 pod in the namespace")
-		podName = pods.Items[0].Name
+		pod = pods.Items[0]
+		podName = pod.Name
+
+		By("Fetching metrics CA certificate")
+		var secretName string
+		for _, vol := range pod.Spec.Volumes {
+			if vol.Name == "metrics-tls" {
+				secretName = vol.Secret.SecretName
+				break
+			}
+		}
+		ExpectWithOffset(7, secretName).ToNot(BeEmpty())
+		secret := &corev1.Secret{}
+		err = c.Get(context.Background(), client.ObjectKey{Name: secretName, Namespace: namespace}, secret)
+		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to get metrics CA secret")
+		block, rest := pem.Decode(secret.Data["ca.crt"])
+		ExpectWithOffset(1, rest).To(BeEmpty(), "failed to decode metrics CA certificate PEM block")
+		var crt *x509.Certificate
+		crt, err = x509.ParseCertificate(block.Bytes)
+		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to parse metrics CA certificate")
+		metricsCAPool = x509.NewCertPool()
+		metricsCAPool.AddCert(crt)
+
+		By("Issuing a bearer token for metrics authorization")
+		var result *authv1.TokenRequest
+		result, err = cs.CoreV1().ServiceAccounts(namespace).CreateToken(
+			context.Background(),
+			serviceAccountName,
+			&authv1.TokenRequest{
+				Spec: authv1.TokenRequestSpec{
+					ExpirationSeconds: ptr.To(int64(3600)),
+				},
+			},
+			metav1.CreateOptions{},
+		)
+		ExpectWithOffset(10, err).ToNot(HaveOccurred())
+		metricsBearerToken = result.Status.Token
+		ExpectWithOffset(1, metricsBearerToken).ToNot(BeEmpty())
+
+		By("Fetching metrics values")
+		metrics, err := getPrometheusMetrics()
+		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get metrics")
+		ExpectWithOffset(2, metrics).ToNot(BeEmpty(), "no metrics in the list")
 	})
 
 	// After all tests have been executed, clean up by undeploying the controller, uninstalling CRDs,
@@ -85,7 +167,7 @@ var _ = Describe("Manager", Ordered, func() {
 	AfterAll(func() {
 		By("Uninstalling the operator")
 		cmd = exec.Command("task", "uninstall-operator")
-		_, err = utils.Run(cmd)
+		_, err = run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to uninstall the operator")
 	})
 
@@ -94,245 +176,99 @@ var _ = Describe("Manager", Ordered, func() {
 	AfterEach(func() {
 		specReport := CurrentSpecReport()
 		if specReport.Failed() {
-			clientset := kubernetes.NewForConfigOrDie(rc)
-
 			By("Fetching controller manager pod logs")
-			logs, err := clientset.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{}).DoRaw(context.Background())
-			if err == nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Controller logs:\n %s", string(logs))
-			} else {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get Controller logs: %s", err)
-			}
+			logs, err := cs.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{}).DoRaw(context.Background())
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to get Controller logs")
+			fmt.Fprintf(GinkgoWriter, ">>>\n>>> Controller logs\n>>>\n %s\n", string(logs))
 
 			By("Fetching Kubernetes events")
 			events := &corev1.EventList{}
 			err = c.List(context.Background(), events, client.InNamespace(namespace))
-			if err == nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Kubernetes events:\n")
-				for _, event := range events.Items {
-					_, _ = fmt.Fprintf(GinkgoWriter, "%s %s %s\n", event.LastTimestamp.Time, event.Reason, event.Message)
-				}
-			} else {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get Kubernetes events: %s", err)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to get Kubernetes events")
+			fmt.Fprintln(GinkgoWriter, ">>>\n>>> Kubernetes Events\n>>>")
+			for _, event := range events.Items {
+				fmt.Fprintf(GinkgoWriter, "%s | %s | %s\n", event.LastTimestamp.Time, event.Reason, event.Message)
 			}
 
-			// By("Fetching curl-metrics logs")
-			// logs, err = clientset.CoreV1().Pods(namespace).GetLogs("curl-metrics", &corev1.PodLogOptions{}).DoRaw(context.Background())
-			// if err == nil {
-			// 	_, _ = fmt.Fprintf(GinkgoWriter, "Metrics logs:\n %s", string(logs))
-			// } else {
-			// 	_, _ = fmt.Fprintf(GinkgoWriter, "Failed to get curl-metrics logs: %s", err)
-			// }
+			By("Describing operator pod")
+			fmt.Fprintln(GinkgoWriter, ">>>\n>>> Pod Describe\n>>>")
+			describer := describe.PodDescriber{Interface: cs}
+			output, err := describer.Describe(namespace, podName, describe.DescriberSettings{
+				ShowEvents: true,
+			})
+			ExpectWithOffset(2, err).NotTo(HaveOccurred(), "failed to describe the pod")
+			fmt.Fprintln(GinkgoWriter, output)
 
-			By("Fetching controller manager pod description")
-			pod := &corev1.Pod{}
-			err = c.Get(context.Background(), client.ObjectKey{Name: podName, Namespace: namespace}, pod)
-			if err == nil {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Pod description:\nName: %s\nNamespace: %s\nStatus: %s\n",
-					pod.Name, pod.Namespace, pod.Status.Phase)
-			} else {
-				_, _ = fmt.Fprintf(GinkgoWriter, "Failed to describe controller pod: %s", err)
+			By("Fetching metrics values")
+			fmt.Fprintln(GinkgoWriter, ">>>\n>>> Metrics\n>>>")
+			metrics, err := getPrometheusMetrics()
+			ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get metrics")
+			ExpectWithOffset(2, metrics).ToNot(BeEmpty(), "no metrics in the list")
+			for _, line := range strings.Split(metrics, "\n") {
+				if strings.HasPrefix(line, "moneypod_") {
+					fmt.Fprintln(GinkgoWriter, line)
+				}
 			}
 		}
 	})
 
-	Context("Stub", func() {
-		It("stub", func() {
-			fmt.Println("Stub")
-			Expect(errors.New("")).ToNot(HaveOccurred())
+	Context("Metrics", func() {
+		var metricFamilies map[string]*promclient.MetricFamily
+
+		It("should parse metrics text", func() {
+			By("Get metrics")
+			metrics, err := getPrometheusMetrics()
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to get metrics")
+			By("Parse metrics")
+			metricFamilies, err = parsePrometheusMetrics(metrics)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to parse metrics")
+		})
+
+		It("should have moneypod_node_hourly_cost of type Gauge", func() {
+			By("Check that moneypod_node_hourly_cost exists")
+			Expect(metricFamilies).To(HaveKey("moneypod_node_hourly_cost"))
+			reconcileMetric := metricFamilies["moneypod_node_hourly_cost"]
+			By("Check that moneypod_node_hourly_cost is Gauge")
+			ExpectWithOffset(1, reconcileMetric.GetType()).To(Equal(promclient.MetricType_GAUGE))
+		})
+
+		It("moneypod_node_hourly_cost should match nodes annotations", func() {
+			reconcileMetric := metricFamilies["moneypod_node_hourly_cost"]
+			// Check specific labels and values
+			for _, metric := range reconcileMetric.GetMetric() {
+				labels := make(map[string]string)
+				for _, label := range metric.GetLabel() {
+					labels[label.GetName()] = label.GetValue()
+				}
+
+				By("Check node and name labels values are equal")
+				Expect(labels).To(HaveKey("node"), "failed to find a node label")
+				Expect(labels).To(HaveKeyWithValue("name", labels["node"]), "name label must be equal to Node label")
+
+				By("Get Node to compare with")
+				node := &corev1.Node{}
+				err = c.Get(context.Background(), client.ObjectKey{Name: labels["node"]}, node)
+				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Node mentioned in label")
+				annotations := node.GetAnnotations()
+				ExpectWithOffset(1, annotations).ToNot(BeEmpty(), "node does not have annotations")
+
+				By("Ensure Node is properly annotated")
+				Expect(annotations).To(HaveKey(AnnotationNodeAvailabilityZone))
+				Expect(annotations).To(HaveKey(AnnotationNodeCapacity))
+				Expect(annotations).To(HaveKey(AnnotationNodeHourlyCost))
+				Expect(annotations).To(HaveKey(AnnotationNodeType))
+
+				By("Compare metric labels and Node annotations")
+				Expect(labels).To(HaveKeyWithValue("availability_zone", annotations[AnnotationNodeAvailabilityZone]))
+				Expect(labels).To(HaveKeyWithValue("capacity", annotations[AnnotationNodeCapacity]))
+				Expect(labels).To(HaveKeyWithValue("type", annotations[AnnotationNodeType]))
+
+				By("Compare metric value with hourly cost from Node annotation")
+				var hourlyCost float64
+				hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64)
+				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to parse Node hourly cost from the annotation")
+				Expect(metric.GetGauge().GetValue()).To(BeNumerically("==", hourlyCost))
+			}
 		})
 	})
-
-	// SetDefaultEventuallyTimeout(2 * time.Minute)
-	// SetDefaultEventuallyPollingInterval(time.Second)
-
-	// Context("Manager", func() {
-	// 	It("should run successfully", func() {
-	// 		By("validating that the manager pod is running as expected")
-	// 		verifyControllerUp := func(g Gomega) {
-	// 			// Get the name of the controller-manager pod
-	// 			cmd := exec.Command("kubectl", "get",
-	// 				"pods", "-l", "app.kubernetes.io/name=moneypod",
-	// 				"-o", "go-template={{ range .items }}"+
-	// 					"{{ if not .metadata.deletionTimestamp }}"+
-	// 					"{{ .metadata.name }}"+
-	// 					"{{ \"\\n\" }}{{ end }}{{ end }}",
-	// 				"-n", namespace,
-	// 			)
-
-	// 			podOutput, err := utils.Run(cmd)
-	// 			g.Expect(err).NotTo(HaveOccurred(), "Failed to retrieve controller-manager pod information")
-	// 			podNames := utils.GetNonEmptyLines(podOutput)
-	// 			g.Expect(podNames).To(HaveLen(1), "expected 1 controller pod running")
-	// 			controllerPodName = podNames[0]
-	// 			g.Expect(controllerPodName).To(ContainSubstring("controller-manager"))
-
-	// 			// Validate the pod's status
-	// 			cmd = exec.Command("kubectl", "get",
-	// 				"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
-	// 				"-n", namespace,
-	// 			)
-	// 			output, err := utils.Run(cmd)
-	// 			g.Expect(err).NotTo(HaveOccurred())
-	// 			g.Expect(output).To(Equal("Running"), "Incorrect controller-manager pod status")
-	// 		}
-	// 		Eventually(verifyControllerUp).Should(Succeed())
-	// 	})
-
-	// 	It("should ensure the metrics endpoint is serving metrics", func() {
-	// 		By("creating a ClusterRoleBinding for the service account to allow access to metrics")
-	// 		cmd := exec.Command("kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
-	// 			"--clusterrole=moneypod-metrics-reader",
-	// 			fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
-	// 		)
-	// 		_, err := utils.Run(cmd)
-	// 		Expect(err).NotTo(HaveOccurred(), "Failed to create ClusterRoleBinding")
-
-	// 		By("validating that the metrics service is available")
-	// 		cmd = exec.Command("kubectl", "get", "service", metricsServiceName, "-n", namespace)
-	// 		_, err = utils.Run(cmd)
-	// 		Expect(err).NotTo(HaveOccurred(), "Metrics service should exist")
-
-	// 		By("getting the service account token")
-	// 		token, err := serviceAccountToken()
-	// 		Expect(err).NotTo(HaveOccurred())
-	// 		Expect(token).NotTo(BeEmpty())
-
-	// 		By("waiting for the metrics endpoint to be ready")
-	// 		verifyMetricsEndpointReady := func(g Gomega) {
-	// 			cmd := exec.Command("kubectl", "get", "endpoints", metricsServiceName, "-n", namespace)
-	// 			output, err := utils.Run(cmd)
-	// 			g.Expect(err).NotTo(HaveOccurred())
-	// 			g.Expect(output).To(ContainSubstring("8443"), "Metrics endpoint is not ready")
-	// 		}
-	// 		Eventually(verifyMetricsEndpointReady).Should(Succeed())
-
-	// 		By("verifying that the controller manager is serving the metrics server")
-	// 		verifyMetricsServerStarted := func(g Gomega) {
-	// 			cmd := exec.Command("kubectl", "logs", controllerPodName, "-n", namespace)
-	// 			output, err := utils.Run(cmd)
-	// 			g.Expect(err).NotTo(HaveOccurred())
-	// 			g.Expect(output).To(ContainSubstring("controller-runtime.metrics\tServing metrics server"),
-	// 				"Metrics server not yet started")
-	// 		}
-	// 		Eventually(verifyMetricsServerStarted).Should(Succeed())
-
-	// 		By("creating the curl-metrics pod to access the metrics endpoint")
-	// 		cmd = exec.Command("kubectl", "run", "curl-metrics", "--restart=Never",
-	// 			"--namespace", namespace,
-	// 			"--image=curlimages/curl:latest",
-	// 			"--overrides",
-	// 			fmt.Sprintf(`{
-	// 				"spec": {
-	// 					"containers": [{
-	// 						"name": "curl",
-	// 						"image": "curlimages/curl:latest",
-	// 						"command": ["/bin/sh", "-c"],
-	// 						"args": ["curl -v -k -H 'Authorization: Bearer %s' https://%s.%s.svc.cluster.local:8443/metrics"],
-	// 						"securityContext": {
-	// 							"allowPrivilegeEscalation": false,
-	// 							"capabilities": {
-	// 								"drop": ["ALL"]
-	// 							},
-	// 							"runAsNonRoot": true,
-	// 							"runAsUser": 1000,
-	// 							"seccompProfile": {
-	// 								"type": "RuntimeDefault"
-	// 							}
-	// 						}
-	// 					}],
-	// 					"serviceAccount": "%s"
-	// 				}
-	// 			}`, token, metricsServiceName, namespace, serviceAccountName))
-	// 		_, err = utils.Run(cmd)
-	// 		Expect(err).NotTo(HaveOccurred(), "Failed to create curl-metrics pod")
-
-	// 		By("waiting for the curl-metrics pod to complete.")
-	// 		verifyCurlUp := func(g Gomega) {
-	// 			cmd := exec.Command("kubectl", "get", "pods", "curl-metrics",
-	// 				"-o", "jsonpath={.status.phase}",
-	// 				"-n", namespace)
-	// 			output, err := utils.Run(cmd)
-	// 			g.Expect(err).NotTo(HaveOccurred())
-	// 			g.Expect(output).To(Equal("Succeeded"), "curl pod in wrong status")
-	// 		}
-	// 		Eventually(verifyCurlUp, 5*time.Minute).Should(Succeed())
-
-	// 		By("getting the metrics by checking curl-metrics logs")
-	// 		metricsOutput := getMetricsOutput()
-	// 		Expect(metricsOutput).To(ContainSubstring(
-	// 			"controller_runtime_reconcile_total",
-	// 		))
-	// 	})
-
-	// 	// +kubebuilder:scaffold:e2e-webhooks-checks
-
-	// 	// TODO: Customize the e2e test suite with scenarios specific to your project.
-	// 	// Consider applying sample/CR(s) and check their status and/or verifying
-	// 	// the reconciliation by using the metrics, i.e.:
-	// 	// metricsOutput := getMetricsOutput()
-	// 	// Expect(metricsOutput).To(ContainSubstring(
-	// 	//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-	// 	//    strings.ToLower(<Kind>),
-	// 	// ))
-	// })
 })
-
-// // serviceAccountToken returns a token for the specified service account in the given namespace.
-// // It uses the Kubernetes TokenRequest API to generate a token by directly sending a request
-// // and parsing the resulting token from the API response.
-// func serviceAccountToken() (string, error) {
-// 	const tokenRequestRawString = `{
-// 		"apiVersion": "authentication.k8s.io/v1",
-// 		"kind": "TokenRequest"
-// 	}`
-
-// 	// Temporary file to store the token request
-// 	secretName := fmt.Sprintf("%s-token-request", serviceAccountName)
-// 	tokenRequestFile := filepath.Join("/tmp", secretName)
-// 	err := os.WriteFile(tokenRequestFile, []byte(tokenRequestRawString), os.FileMode(0o644))
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	var out string
-// 	verifyTokenCreation := func(g Gomega) {
-// 		// Execute kubectl command to create the token
-// 		cmd := exec.Command("kubectl", "create", "--raw", fmt.Sprintf(
-// 			"/api/v1/namespaces/%s/serviceaccounts/%s/token",
-// 			namespace,
-// 			serviceAccountName,
-// 		), "-f", tokenRequestFile)
-
-// 		output, err := cmd.CombinedOutput()
-// 		g.Expect(err).NotTo(HaveOccurred())
-
-// 		// Parse the JSON output to extract the token
-// 		var token tokenRequest
-// 		err = json.Unmarshal(output, &token)
-// 		g.Expect(err).NotTo(HaveOccurred())
-
-// 		out = token.Status.Token
-// 	}
-// 	Eventually(verifyTokenCreation).Should(Succeed())
-
-// 	return out, err
-// }
-
-// // getMetricsOutput retrieves and returns the logs from the curl pod used to access the metrics endpoint.
-// func getMetricsOutput() string {
-// 	By("getting the curl-metrics logs")
-// 	cmd := exec.Command("kubectl", "logs", "curl-metrics", "-n", namespace)
-// 	metricsOutput, err := utils.Run(cmd)
-// 	Expect(err).NotTo(HaveOccurred(), "Failed to retrieve logs from curl pod")
-// 	Expect(metricsOutput).To(ContainSubstring("< HTTP/1.1 200 OK"))
-// 	return metricsOutput
-// }
-
-// // tokenRequest is a simplified representation of the Kubernetes TokenRequest API response,
-// // containing only the token field that we need to extract.
-// type tokenRequest struct {
-// 	Status struct {
-// 		Token string `json:"token"`
-// 	} `json:"status"`
-// }

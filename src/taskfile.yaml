@@ -28,7 +28,7 @@ vars:
   envtestVersion: latest
   manifestPath:
     map:
-      root: "{{ .ROOT_DIR }}/config"
+      root: "{{ .ROOT_DIR }}/config/kind"
       crds: "{{ .ROOT_DIR }}/config/crds"
   bin:
     map:
@@ -42,6 +42,7 @@ vars:
   kind:
     map:
       name: "{{ .name }}"
+      configPath: '{{ print .TASK_TEMP_DIR "/kind-config.yaml" }}'
       config: |-
         apiVersion: kind.x-k8s.io/v1alpha4
         kind: Cluster
@@ -52,6 +53,10 @@ vars:
         - role: worker
           labels:
             node-role.cluster.local/worker: ""
+          extraPortMappings:
+          - containerPort: 30000
+            hostPort: 30000
+            listenAddress: 0.0.0.0
 
 tasks:
   clean:

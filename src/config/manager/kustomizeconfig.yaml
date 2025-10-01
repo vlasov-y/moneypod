@@ -9,3 +9,7 @@ nameReference:
         path: /spec/secretName
       - kind: Deployment
         path: /spec/template/spec/volumes/secret/secretName
+  - kind: Service
+    fieldSpecs:
+      - kind: Certificate
+        path: /spec/dnsNames

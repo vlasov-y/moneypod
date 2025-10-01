@@ -5,11 +5,10 @@ set: [pipefail]
 tasks:
   all:
     desc: Installs CLI tools to {{ .localBin }}
-    env:
-      GOBIN: "{{ .localBin }}"
     cmds:
       - mkdir -p {{ squote .localBin }} {{ squote .TASK_TEMP_DIR }}
-      - cmd: go install {{ squote .ITEM }}
+      - task: controller-gen
+      - cmd: GOBIN={{ squote .localBin }} go install {{ squote .ITEM }}
         for:
           - github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
           - sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
@@ -30,11 +29,9 @@ tasks:
 
   controller-gen:
     desc: Installs controller-gen to {{ .bin.controllerGen }}
-    env:
-      GOBIN: "{{ .localBin }}"
     cmds:
       - mkdir -p {{ squote .localBin }}
-      - go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+      - GOBIN={{ squote .localBin }} go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
     status:
       - "{{ .bin.controllerGen }} --version"
 

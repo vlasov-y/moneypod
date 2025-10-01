@@ -2,17 +2,23 @@ version: "3"
 
 set: [pipefail]
 
+includes:
+  tools:
+    taskfile: taskfile.tools.yaml
+    internal: true
+
 tasks:
   create:
     desc: Create a KIND cluster
-    vars:
-      kindConfigPath: '{{ print .TASK_TEMP_DIR "/kind-config.yaml" | squote }}'
+    deps: [tools:all]
     cmds:
-      - cmd: echo {{ b64enc .kind.config }} | base64 -d >{{ .kindConfigPath }}
-        silent: true
+      - silent: true
+        cmd: |-
+          mkdir -p "$(dirname {{ .kind.configPath }})"
+          echo {{ b64enc .kind.config }} | base64 -d >{{ .kind.configPath }}
       - >-
         KUBECONFIG={{ squote .kubeconfig }} {{ .bin.kind }} create cluster
-        --name {{ .kind.name }} --config {{ .kindConfigPath }}
+        --name {{ .kind.name }} --config {{ .kind.configPath }}
       - chmod 0600 {{ squote .kubeconfig }}
     status:
       - "{{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}"
