@@ -797,6 +797,17 @@
   "templating": {
     "list": [
       {
+        "allowCustomValue": false,
+        "current": {},
+        "label": "Datasource",
+        "name": "DS_VICTORIAMETRICS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
         "allValue": ".+",
         "allowCustomValue": true,
         "current": {},
@@ -907,6 +918,6 @@
   "timezone": "browser",
   "title": "MoneyPod",
   "uid": "2ac3cfa1-7544-4bf7-ad3f-221cb8511154",
-  "version": 10,
+  "version": 1,
   "weekStart": ""
 }

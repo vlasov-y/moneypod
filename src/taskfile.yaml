@@ -56,9 +56,14 @@ vars:
           labels:
             node-role.cluster.local/worker: ""
           extraPortMappings:
+          # MoneyPod Operator metrics
           - containerPort: 30000
             hostPort: 30000
-            listenAddress: 0.0.0.0
+            listenAddress: 127.0.0.1
+          # Grafana
+          - containerPort: 30001
+            hostPort: 80
+            listenAddress: 127.0.0.1
 
 tasks:
   clean:

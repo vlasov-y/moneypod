@@ -39,9 +39,15 @@ tasks:
     deps: [bootstrap]
     cmds:
       - "{{ .bin.kubectl }} apply --wait -k flux/victoria-metrics"
+      - >-
+        {{ .bin.kubectl }} -n moneypod get configmap moneypod-dashboards -o jsonpath={.data} |
+        xargs -0 printf "%s\ndata: %s" "$({{ .bin.kubectl }} create configmap -n victoria-metrics -o yaml --dry-run=client moneypod-dashboards)" |
+        {{ .bin.kubectl }} apply -f -
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Ready helmreleases --all --timeout=5m"
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Available deployments --all --timeout=5m"
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for='jsonpath={.status.updateStatus}=operational' vmsingles,vmalerts,vmagents --all --timeout=10m"
+      - "{{ .bin.kubectl }} -n victoria-metrics rollout restart deployment victoria-metrics-grafana"
+      - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Ready pods --all --timeout=5m"
       - "echo 'info: default Grafana credentials are admin:admin'"
 
   kubeconfig:
