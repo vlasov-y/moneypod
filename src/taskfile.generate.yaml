@@ -33,3 +33,12 @@ tasks:
     desc: Run go vet against the code
     cmds:
       - go vet ./...
+
+  distribute:
+    desc: Created install.yaml with all manifests compiled
+    deps: [tools:kustomize]
+    cmds:
+      - |-
+        cd {{ squote .manifestPath.distribute }}
+        {{ .bin.kustomize }} edit set image {{ print "controller=" .image | squote }}
+      - "{{ .bin.kustomize }} build {{ squote .manifestPath.distribute }} >install.yaml"

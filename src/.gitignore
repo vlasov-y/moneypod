@@ -28,3 +28,5 @@ go.work
 
 # taskfile local cache
 .task
+# distribution manifest
+install.yaml
