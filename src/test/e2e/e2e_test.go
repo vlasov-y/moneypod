@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -224,7 +225,7 @@ var _ = Describe("Manager", Ordered, func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to parse metrics")
 		})
 
-		It("should have moneypod_node_hourly_cost of type Gauge", func() {
+		It("should have node metrics families", func() {
 			By("Check that moneypod_node_hourly_cost exists")
 			Expect(metricFamilies).To(HaveKey("moneypod_node_hourly_cost"))
 			reconcileMetric := metricFamilies["moneypod_node_hourly_cost"]
@@ -234,7 +235,6 @@ var _ = Describe("Manager", Ordered, func() {
 
 		It("moneypod_node_hourly_cost should match nodes annotations", func() {
 			reconcileMetric := metricFamilies["moneypod_node_hourly_cost"]
-			// Check specific labels and values
 			for _, metric := range reconcileMetric.GetMetric() {
 				labels := make(map[string]string)
 				for _, label := range metric.GetLabel() {
@@ -243,7 +243,7 @@ var _ = Describe("Manager", Ordered, func() {
 
 				By("Check node and name labels values are equal")
 				Expect(labels).To(HaveKey("node"), "failed to find a node label")
-				Expect(labels).To(HaveKeyWithValue("name", labels["node"]), "name label must be equal to Node label")
+				Expect(labels).To(HaveKeyWithValue("name", labels["node"]), "name label must be equal to pod label")
 
 				By("Get Node to compare with")
 				node := &corev1.Node{}
@@ -268,6 +268,74 @@ var _ = Describe("Manager", Ordered, func() {
 				hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64)
 				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to parse Node hourly cost from the annotation")
 				Expect(metric.GetGauge().GetValue()).To(BeNumerically("==", hourlyCost))
+			}
+		})
+
+		It("should have pod metrics families", func() {
+			for _, family := range []string{
+				"moneypod_pod_cpu_hourly_cost",
+				"moneypod_pod_memory_hourly_cost",
+				"moneypod_pod_requests_hourly_cost",
+			} {
+				By(fmt.Sprintf("Check that %s exists", family))
+				Expect(metricFamilies).To(HaveKey(family))
+				reconcileMetric := metricFamilies[family]
+				By(fmt.Sprintf("Check that %s is Gauge", family))
+				ExpectWithOffset(1, reconcileMetric.GetType()).To(Equal(promclient.MetricType_GAUGE))
+			}
+		})
+
+		It("should have valid pod labels", func() {
+			for _, family := range []string{
+				"moneypod_pod_cpu_hourly_cost",
+				"moneypod_pod_memory_hourly_cost",
+				"moneypod_pod_requests_hourly_cost",
+			} {
+				reconcileMetric := metricFamilies[family]
+				for _, metric := range reconcileMetric.GetMetric() {
+					labels := make(map[string]string)
+					for _, label := range metric.GetLabel() {
+						labels[label.GetName()] = label.GetValue()
+					}
+
+					By("Check pod and namespace labels exist")
+					Expect(labels).To(HaveKey("pod"), "failed to find a pod label")
+					Expect(labels).To(HaveKey("namespace"), "failed to find a namespace label")
+					byPrefix := fmt.Sprintf("%s/%s", labels["namespace"], labels["pod"])
+
+					By(fmt.Sprintf("%s: Check pod and name labels values are equal", byPrefix))
+					Expect(labels).To(HaveKey("pod"), "failed to find a pod label")
+					Expect(labels).To(HaveKeyWithValue("name", labels["pod"]), "name label must be equal to pod label")
+
+					By(fmt.Sprintf("%s: Get Pod to compare with", byPrefix))
+					pod := &corev1.Pod{}
+					err = c.Get(context.Background(), client.ObjectKey{Name: labels["pod"], Namespace: labels["namespace"]}, pod)
+					ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Pod mentioned in label")
+
+					By(fmt.Sprintf("%s: Ensure node label matches pod.spec.nodeName", byPrefix))
+					Expect(labels).To(HaveKey("node"), "failed to find a node label")
+					Expect(labels["node"]).To(Equal(pod.Spec.NodeName), "node label does not match pod.spec.nodeName")
+
+					By(fmt.Sprintf("%s: Ensure owner labels are set", byPrefix))
+					Expect(labels).To(HaveKey("owner_kind"), "failed to find a owner_kind label")
+					Expect(labels).To(HaveKey("owner_name"), "failed to find a owner_name label")
+					if labels["owner_kind"] != "" {
+						Expect(pod.GetOwnerReferences()).ToNot(BeEmpty(), "label has owner set, but pod does not have an owner")
+						if labels["owner_kind"] == "Deployment" {
+							By(fmt.Sprintf("%s: Ensure Deployment owner exists", byPrefix))
+							deployment := &appsv1.Deployment{}
+							err = c.Get(context.Background(), client.ObjectKey{Name: labels["owner_name"], Namespace: labels["namespace"]}, deployment)
+							ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Deployment mentioned in owner labels")
+						} else {
+							By(fmt.Sprintf("%s: Ensure not Deployment owner exists", byPrefix))
+							owner := pod.GetOwnerReferences()[0]
+							Expect(labels).To(HaveKeyWithValue("owner_kind", owner.Kind), "failed to find a owner_kind label")
+							Expect(labels).To(HaveKeyWithValue("owner_name", owner.Name), "failed to find a owner_name label")
+						}
+					} else {
+						Expect(pod.GetOwnerReferences()).To(BeEmpty(), "pod has owners, but labels no")
+					}
+				}
 			}
 		})
 	})
