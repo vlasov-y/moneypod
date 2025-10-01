@@ -23,3 +23,17 @@ repos:
         files: src/.+
         types: [file]
         pass_filenames: false
+      - id: lint
+        name: Go lint
+        entry: task -d src lint
+        language: system
+        files: src/.+
+        types: [file]
+        pass_filenames: false
+      - id: unit
+        name: Go unit tests
+        entry: task -d src test:unit
+        language: system
+        files: src/.+
+        types: [file]
+        pass_filenames: false

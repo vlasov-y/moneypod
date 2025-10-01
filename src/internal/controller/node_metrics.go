@@ -17,6 +17,6 @@ func createNodeMetrics(node *corev1.Node, cost float64, info *types.NodeInfo) {
 	deleteNodeMetrics(node)
 	monitoring.NodeHourlyCostMetric.WithLabelValues(
 		node.Name, node.Name, info.Type, info.Capacity,
-		info.Id, info.AvailabilityZone,
+		info.ID, info.AvailabilityZone,
 	).Set(cost)
 }

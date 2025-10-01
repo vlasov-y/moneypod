@@ -1,8 +1,8 @@
-package pod
+// Package node provides node controller functionality and cost calculations.
+package node
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +10,7 @@ import (
 	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
 	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,7 +19,6 @@ import (
 
 func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecorder, node *corev1.Node) (hourlyCost float64, err error) {
 	log := logf.FromContext(ctx)
-	hourlyCost = -1
 
 	annotations := node.GetAnnotations()
 	if annotations == nil {
@@ -26,22 +26,20 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 	}
 
 	// Calculate Node hourly cost if annotationHourlyCost is not set or unknown
-	if a, exists := annotations[AnnotationNodeHourlyCost]; !exists || a == "unknown" {
+	if a, exists := annotations[AnnotationNodeHourlyCost]; !exists || a == UnknownCost {
 		// Switch by provider
 		if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
 			if hourlyCost, err = aws.GetNodeHourlyCost(ctx, r, node); err != nil {
-				if err.Error() == "requeue" {
-					err = nil
-					return hourlyCost, errors.New("requeue")
+				if CheckRequeue(err) {
+					return hourlyCost, ErrRequestRequeue
 				}
 				return
 			}
 		} else {
 			// If no provider is implemented - expect user to set it
 			if hourlyCost, err = manual.GetNodeHourlyCost(ctx, r, node); err != nil {
-				if err.Error() == "requeue" {
-					err = nil
-					return hourlyCost, errors.New("requeue")
+				if CheckRequeue(err) {
+					return hourlyCost, ErrRequestRequeue
 				}
 				return
 			}
@@ -51,7 +49,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 		if hourlyCost > 0 {
 			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 7, 64)
 		} else {
-			annotations[AnnotationNodeHourlyCost] = "unknown"
+			annotations[AnnotationNodeHourlyCost] = UnknownCost
 		}
 		node.SetAnnotations(annotations)
 		// Update the node object
@@ -59,7 +57,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 			if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
 				err = nil
 				log.V(2).Info("requeue because of the update conflict")
-				return hourlyCost, errors.New("requeue")
+				return hourlyCost, ErrRequestRequeue
 			}
 			log.V(1).Error(err, "failed to update the node object")
 			r.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
@@ -67,7 +65,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 		}
 	}
 	// Get precalculated cost...
-	if annotations[AnnotationNodeHourlyCost] == "unknown" {
+	if annotations[AnnotationNodeHourlyCost] == UnknownCost {
 		hourlyCost = -1
 	} else {
 		// ...if it is defined
@@ -87,7 +85,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 				if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
 					err = nil
 					log.V(2).Info("requeue because of the update conflict")
-					return hourlyCost, errors.New("requeue")
+					return hourlyCost, ErrRequestRequeue
 				}
 				log.V(1).Error(err, "failed to update the node object")
 				r.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())

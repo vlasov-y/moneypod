@@ -1,12 +1,13 @@
+// Package pod provides pod controller functionality and cost calculations.
 package pod
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,10 +26,10 @@ func GetNodeHourlyCost(ctx context.Context, c client.Client, r record.EventRecor
 	var exists bool
 	if nodeHourlyCostStr, exists = nodeAnnotations[AnnotationNodeHourlyCost]; !exists {
 		// Node is not yet processes, requeueing the pod
-		return hourlyCost, errors.New("requeue")
+		return hourlyCost, ErrRequestRequeue
 	}
 
-	if nodeHourlyCostStr == "unknown" {
+	if nodeHourlyCostStr == UnknownCost {
 		msg := fmt.Sprintf("node %s has unknown hourly cost", pod.Spec.NodeName)
 		r.Eventf(pod, corev1.EventTypeWarning, "NodeHourlyCostUnknown", msg)
 		return

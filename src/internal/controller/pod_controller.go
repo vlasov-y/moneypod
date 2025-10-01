@@ -21,6 +21,7 @@ import (
 
 	. "github.com/vlasov-y/moneypod/internal/controller/pod"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/internal/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -69,7 +70,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 
 	// Pod is not yet scheduled
 	if pod.Spec.NodeName == "" {
-		return requeue, err
+		return RequeueResult, err
 	}
 
 	// Handle deletion
@@ -93,9 +94,9 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 
 	// Get node's hourly cost
 	if info.NodeHourlyCost, err = GetNodeHourlyCost(ctx, r.Client, r.Recorder, &pod, &node); err != nil {
-		if err.Error() == "requeue" {
+		if CheckRequeue(err) {
 			err = nil
-			return requeue, err
+			return RequeueResult, err
 		}
 		return
 	}
@@ -106,19 +107,19 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 
 	// Calculate minimum pod hourly cost basing on resources requests
 	if info.PodRequestsHourlyCost, err = GetRequestsHourlyCost(ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
-		if err.Error() == "requeue" {
+		if CheckRequeue(err) {
 			err = nil
-			return requeue, err
+			return RequeueResult, err
 		}
 		return
 	}
 
 	// Calculate node's reference costs
-	if info.NodeCpuCoreHourlyCost, info.NodeMemoryMiBHourlyCost, err = GetResourcesRefHourlyCost(
+	if info.NodeCPUCoreHourlyCost, info.NodeMemoryMiBHourlyCost, err = GetResourcesRefHourlyCost(
 		ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
-		if err.Error() == "requeue" {
+		if CheckRequeue(err) {
 			err = nil
-			return requeue, err
+			return RequeueResult, err
 		}
 		return
 	}

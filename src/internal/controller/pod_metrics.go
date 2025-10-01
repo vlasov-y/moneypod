@@ -8,7 +8,7 @@ import (
 )
 
 func deletePodMetrics(pod *corev1.Pod) {
-	monitoring.PodCpuHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
+	monitoring.PodCPUHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
 		"name": pod.Name, "namespace": pod.Namespace,
 	})
 	monitoring.PodMemoryHourlyCostMetric.DeletePartialMatch(prometheus.Labels{
@@ -21,9 +21,9 @@ func deletePodMetrics(pod *corev1.Pod) {
 
 func createPodMetrics(pod *corev1.Pod, info *types.PodInfo) {
 	deletePodMetrics(pod)
-	monitoring.PodCpuHourlyCostMetric.WithLabelValues(
+	monitoring.PodCPUHourlyCostMetric.WithLabelValues(
 		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
-	).Set(info.NodeCpuCoreHourlyCost)
+	).Set(info.NodeCPUCoreHourlyCost)
 	monitoring.PodMemoryHourlyCostMetric.WithLabelValues(
 		pod.Name, pod.Name, pod.Namespace, info.Owner.Kind, info.Owner.Name, pod.Spec.NodeName,
 	).Set(info.NodeMemoryMiBHourlyCost)

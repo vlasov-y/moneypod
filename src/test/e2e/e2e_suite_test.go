@@ -39,33 +39,34 @@ func TestE2E(t *testing.T) {
 var _ = BeforeSuite(func() {
 	By("creating and bootstrapping a kind cluster")
 	cmd := exec.Command("task", "kind:bootstrap")
-	_, err := run(cmd)
+	err := run(cmd)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred(), "Failed to create the kind cluster")
 
 	By("building and loading docker image to the cluster")
 	cmd = exec.Command("task", "docker:build-and-load")
-	_, err = run(cmd)
+	err = run(cmd)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred(), "Failed to build and load the image")
 })
 
 // run will execute command and grab its output
-func run(cmd *exec.Cmd) (string, error) {
+func run(cmd *exec.Cmd) (err error) {
 	dir, _ := getProjectDir()
 	cmd.Dir = dir
 
-	if err := os.Chdir(cmd.Dir); err != nil {
+	if err = os.Chdir(cmd.Dir); err != nil {
 		fmt.Fprintf(GinkgoWriter, "chdir dir: %q\n", err)
 	}
 
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	command := strings.Join(cmd.Args, " ")
 	fmt.Fprintf(GinkgoWriter, "running: %q\n", command)
-	output, err := cmd.CombinedOutput()
+	var output []byte
+	output, err = cmd.CombinedOutput()
 	if err != nil {
 		fmt.Fprintln(GinkgoWriter, string(output))
-		return string(output), fmt.Errorf("%q failed with error: %w", command, err)
+		return fmt.Errorf("%q failed with error: %w", command, err)
 	}
-	return string(output), nil
+	return
 }
 
 // getProjectDir will return the directory where the project is

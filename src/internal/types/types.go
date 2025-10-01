@@ -1,3 +1,4 @@
+// Package types defines common data structures and constants used throughout the application.
 package types
 
 import (
@@ -15,9 +16,11 @@ const (
 	AnnotationNodeType = annotationDomain + "/type"
 	// Node location
 	AnnotationNodeAvailabilityZone = annotationDomain + "/availability-zone"
+	// Placeholder for an unknown price
+	UnknownCost = "unknown"
 )
 
-// Max concurrent reconciles per controller
+// MaxConcurrentReconciles defines the maximum number of concurrent reconciles per controller.
 var MaxConcurrentReconciles int = func() int {
 	str := os.Getenv("MAX_CONCURRENT_RECONCILES")
 	if str == "" {
@@ -37,10 +40,10 @@ const (
 	OnDemand NodeCapacity = "on-demand"
 )
 
-// Provider information about the node
+// NodeInfo contains provider information about the node.
 type NodeInfo struct {
 	// Provider node ID
-	Id string
+	ID string
 	// Instance type: t3a.small, etc.
 	Type string
 	// Spot or on-demand
@@ -49,7 +52,7 @@ type NodeInfo struct {
 	AvailabilityZone string
 }
 
-// Provider information about the node
+// PodInfo contains provider information about the pod.
 type PodInfo struct {
 	// Pod owner reference
 	Owner struct {
@@ -57,7 +60,7 @@ type PodInfo struct {
 		Name string
 	}
 	NodeHourlyCost          float64
-	NodeCpuCoreHourlyCost   float64
+	NodeCPUCoreHourlyCost   float64
 	NodeMemoryMiBHourlyCost float64
 	PodRequestsHourlyCost   float64
 }

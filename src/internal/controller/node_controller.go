@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package controller provides Kubernetes controller implementations for cost management.
 package controller
 
 import (
@@ -25,6 +26,7 @@ import (
 	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
 	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/internal/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -74,7 +76,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		if c.Type == corev1.NodeReady {
 			if c.Status != corev1.ConditionTrue {
 				log.V(2).Info("node is not yet ready")
-				return requeue, err
+				return RequeueResult, err
 			}
 			break
 		}
@@ -83,9 +85,9 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	// Manage hourly cost
 	var hourlyCost float64
 	if hourlyCost, err = UpdateHourlyCost(ctx, r.Client, r.Recorder, &node); err != nil {
-		if err.Error() == "requeue" {
+		if CheckRequeue(err) {
 			err = nil
-			return requeue, err
+			return RequeueResult, err
 		}
 		return
 	}
@@ -98,17 +100,17 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	var info NodeInfo
 	if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
 		if info, err = aws.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
-			if err.Error() == "requeue" {
+			if CheckRequeue(err) {
 				err = nil
-				return requeue, err
+				return RequeueResult, err
 			}
 			return
 		}
 	} else {
 		if info, err = manual.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
-			if err.Error() == "requeue" {
+			if CheckRequeue(err) {
 				err = nil
-				return requeue, err
+				return RequeueResult, err
 			}
 			return
 		}

@@ -1,3 +1,4 @@
+// Package manual provides manual provider functionality for the controller.
 package manual
 
 import (
@@ -27,7 +28,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 		return
 	}
 
-	if hourlyCostStr == "unknown" {
+	if hourlyCostStr == UnknownCost {
 		msg := fmt.Sprintf("node %s has unknown hourly cost", node.Name)
 		r.Eventf(node, corev1.EventTypeWarning, "NodeHourlyCostUnknown", msg)
 		return

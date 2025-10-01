@@ -14,15 +14,14 @@ func GetRequestsHourlyCost(
 	ctx context.Context, c client.Client, r record.EventRecorder,
 	pod *corev1.Pod, node *corev1.Node, nodeHourlyCost float64) (hourlyCost float64, err error) {
 	log := logf.FromContext(ctx)
-	hourlyCost = 0
 
-	allocatedCpu := resource.Quantity{}
+	allocatedCPU := resource.Quantity{}
 	allocatedMemory := resource.Quantity{}
 
 	// Sum allocated resources from pod status
 	for _, status := range pod.Status.ContainerStatuses {
 		if status.AllocatedResources.Cpu() != nil {
-			allocatedCpu.Add(*status.AllocatedResources.Cpu())
+			allocatedCPU.Add(*status.AllocatedResources.Cpu())
 		}
 		if status.AllocatedResources.Memory() != nil {
 			allocatedMemory.Add(*status.AllocatedResources.Memory())
@@ -30,7 +29,7 @@ func GetRequestsHourlyCost(
 	}
 
 	// Calculate resources requests cost
-	cpuCost := allocatedCpu.AsApproximateFloat64() / node.Status.Allocatable.Cpu().AsApproximateFloat64() * (nodeHourlyCost / 2)
+	cpuCost := allocatedCPU.AsApproximateFloat64() / node.Status.Allocatable.Cpu().AsApproximateFloat64() * (nodeHourlyCost / 2)
 	memoryCost := allocatedMemory.AsApproximateFloat64() / node.Status.Allocatable.Memory().AsApproximateFloat64() * (nodeHourlyCost / 2)
 	hourlyCost = cpuCost + memoryCost
 	log.V(2).Info("pod requests hourly cost", "cpu", cpuCost, "memory", memoryCost, "sum", hourlyCost)

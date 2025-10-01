@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package monitoring provides metrics collection and monitoring functionality.
 package monitoring
 
 import (
@@ -32,7 +33,7 @@ var (
 		Help:      "Node hourly cost.",
 	}, []string{"node", "name", "type", "capacity", "id", "availability_zone"})
 
-	PodCpuHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	PodCPUHourlyCostMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricsNamespace,
 		Subsystem: "pod",
 		Name:      "cpu_hourly_cost",
@@ -55,7 +56,7 @@ var (
 // RegisterMetrics registers all metrics in the Metrics map with Prometheus's global registry.
 func RegisterMetrics() {
 	metrics.Registry.MustRegister(NodeHourlyCostMetric)
-	metrics.Registry.MustRegister(PodCpuHourlyCostMetric)
+	metrics.Registry.MustRegister(PodCPUHourlyCostMetric)
 	metrics.Registry.MustRegister(PodMemoryHourlyCostMetric)
 	metrics.Registry.MustRegister(PodRequestsHourlyCostMetric)
 }

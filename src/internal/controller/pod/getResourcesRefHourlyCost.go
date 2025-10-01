@@ -18,10 +18,10 @@ func GetResourcesRefHourlyCost(
 	cpuCoreFloat := cpuCore.AsApproximateFloat64()
 	memoryMiBFloat := memoryMiB.AsApproximateFloat64()
 
-	allocatableCpu := node.Status.Allocatable.Cpu().AsApproximateFloat64()
+	allocatableCPU := node.Status.Allocatable.Cpu().AsApproximateFloat64()
 	allocatableMemory := node.Status.Allocatable.Memory().AsApproximateFloat64()
 
-	cpuCoreCost = cpuCoreFloat * (nodeHourlyCost / 2) / allocatableCpu
+	cpuCoreCost = cpuCoreFloat * (nodeHourlyCost / 2) / allocatableCPU
 	memoryMiBCost = memoryMiBFloat * (nodeHourlyCost / 2) / allocatableMemory
 
 	return

@@ -1,3 +1,4 @@
+// Package aws provides AWS-specific functionality for the controller.
 package aws
 
 import (
@@ -10,7 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func getInstanceId(ctx context.Context, r record.EventRecorder, node *corev1.Node) (id string, err error) {
+func getInstanceID(ctx context.Context, r record.EventRecorder, node *corev1.Node) (id string, err error) {
 	log := logf.FromContext(ctx)
 	// Getting instance ID
 	var rx *regexp.Regexp

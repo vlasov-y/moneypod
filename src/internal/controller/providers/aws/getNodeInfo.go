@@ -16,11 +16,11 @@ func GetNodeInfo(ctx context.Context, r record.EventRecorder, node *corev1.Node)
 	log := logf.FromContext(ctx)
 
 	// Gather node information
-	var instanceId string
-	if instanceId, err = getInstanceId(ctx, r, node); err != nil {
+	var instanceID string
+	if instanceID, err = getInstanceID(ctx, r, node); err != nil {
 		return
 	}
-	info.Id = instanceId
+	info.ID = instanceID
 
 	// Authorize AWS
 	var awsConfig aws.Config
@@ -33,7 +33,7 @@ func GetNodeInfo(ctx context.Context, r record.EventRecorder, node *corev1.Node)
 	// Describe the instance
 	var describe *ec2.DescribeInstancesOutput
 	if describe, err = clientEc2.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{instanceId},
+		InstanceIds: []string{instanceID},
 	}); err != nil {
 		log.V(1).Error(err, "failed to describe the instance")
 		r.Eventf(node, corev1.EventTypeWarning, "DescribeEC2InstanceFailed", err.Error())

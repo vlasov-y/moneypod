@@ -95,3 +95,10 @@ tasks:
     deps: [uninstall-crds]
     cmds:
       - "{{ .bin.kubectl }} delete --wait -k {{ squote .manifestPath.root }}"
+
+  lint:
+    desc: Go linter
+    deps: [tools:all]
+    cmds:
+      - '{{ .bin.lint }} config verify --config {{ print .ROOT_DIR "/.golangci.yml" | quote }}'
+      - "{{ .bin.lint }} run"

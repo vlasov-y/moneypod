@@ -98,7 +98,7 @@ var _ = Describe("Manager", Ordered, func() {
 	BeforeAll(func() {
 		By("Installing operator to the cluster")
 		cmd = exec.Command("task", "install-operator")
-		_, err = run(cmd)
+		err = run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to install the operator")
 
 		By("Initializing Kubernetes clients")
@@ -117,7 +117,7 @@ var _ = Describe("Manager", Ordered, func() {
 		pods := &corev1.PodList{}
 		err = c.List(context.Background(), pods, client.InNamespace(namespace))
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to list pods in the namespace")
-		Expect(len(pods.Items)).To(Equal(1), "expected eactly 1 pod in the namespace")
+		Expect(pods.Items).To(HaveLen(1), "expected eactly 1 pod in the namespace")
 		pod = pods.Items[0]
 		podName = pod.Name
 
@@ -168,7 +168,7 @@ var _ = Describe("Manager", Ordered, func() {
 	AfterAll(func() {
 		By("Uninstalling the operator")
 		cmd = exec.Command("task", "uninstall-operator")
-		_, err = run(cmd)
+		err = run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to uninstall the operator")
 	})
 
@@ -324,7 +324,8 @@ var _ = Describe("Manager", Ordered, func() {
 						if labels["owner_kind"] == "Deployment" {
 							By(fmt.Sprintf("%s: Ensure Deployment owner exists", byPrefix))
 							deployment := &appsv1.Deployment{}
-							err = c.Get(context.Background(), client.ObjectKey{Name: labels["owner_name"], Namespace: labels["namespace"]}, deployment)
+							err = c.Get(context.Background(),
+								client.ObjectKey{Name: labels["owner_name"], Namespace: labels["namespace"]}, deployment)
 							ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Deployment mentioned in owner labels")
 						} else {
 							By(fmt.Sprintf("%s: Ensure not Deployment owner exists", byPrefix))

@@ -3,7 +3,6 @@ package aws
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -12,6 +11,7 @@ import (
 	ec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	pricing "github.com/aws/aws-sdk-go-v2/service/pricing"
 	pricingTypes "github.com/aws/aws-sdk-go-v2/service/pricing/types"
+	. "github.com/vlasov-y/moneypod/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
@@ -21,9 +21,9 @@ import (
 func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1.Node) (hourlyCost float64, err error) {
 	log := logf.FromContext(ctx)
 
-	// Get instanceId
-	var instanceId string
-	if instanceId, err = getInstanceId(ctx, r, node); err != nil {
+	// Get instanceID
+	var instanceID string
+	if instanceID, err = getInstanceID(ctx, r, node); err != nil {
 		return
 	}
 
@@ -41,7 +41,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 	// Describe the instance
 	var describe *ec2.DescribeInstancesOutput
 	if describe, err = clientEc2.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
-		InstanceIds: []string{instanceId},
+		InstanceIds: []string{instanceID},
 	}); err != nil {
 		log.V(1).Error(err, "failed to describe the instance")
 		r.Eventf(node, corev1.EventTypeWarning, "DescribeEC2InstanceFailed", err.Error())
@@ -75,7 +75,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 					r.Eventf(node, corev1.EventTypeNormal, "HourlyCost", *spotPrice)
 				} else {
 					// Spot instance request may not appear instantly, we will try again later
-					return hourlyCost, errors.New("requeue")
+					return hourlyCost, ErrRequestRequeue
 				}
 			} else {
 				// If instance is on-demand - get the price for instance type in the region
@@ -152,7 +152,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 				} else {
 					msg := "no pricing data found"
 					log.V(1).Info(msg, "instanceType", string(instance.InstanceType))
-					return hourlyCost, errors.New("requeue")
+					return hourlyCost, ErrRequestRequeue
 				}
 			}
 		}
