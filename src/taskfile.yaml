@@ -30,6 +30,7 @@ vars:
     map:
       root: "{{ .ROOT_DIR }}/config/kind"
       crds: "{{ .ROOT_DIR }}/config/crds"
+      rbac: "{{ .ROOT_DIR }}/config/manager/rbac"
   bin:
     map:
       containerTool: docker

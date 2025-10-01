@@ -16,7 +16,7 @@ tasks:
     desc: Generate WebhookConfiguration, ClusterRole and CustomResourceDefinitions
     deps: [tools:controller-gen]
     cmds:
-      - '{{ .bin.controllerGen }} rbac:roleName=app crd webhook paths="./..." output:crd:artifacts:config={{ .manifestPath.crds }}'
+      - '{{ .bin.controllerGen }} rbac:roleName=app crd webhook paths="./..." output:crd:artifacts:config={{ .manifestPath.crds }} output:rbac:dir={{ .manifestPath.rbac }}'
 
   code:
     desc: Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods
