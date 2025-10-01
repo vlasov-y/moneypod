@@ -67,7 +67,7 @@ tasks:
       - task: kind:clean
       - task: test:clean
       - task: tools:clean
-      - rm -rvf {{ squote .TASK_TEMP_DIR }}
+      - rm -rvf {{ squote .TASK_TEMP_DIR }} install.yaml
 
   install-crds:
     desc: Install operator CRDs
