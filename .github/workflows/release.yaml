@@ -30,10 +30,10 @@ jobs:
 
       - name: Update image tag
         run: kustomize edit set image "controller=ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}"
-        working-directory: src/config/manager
+        working-directory: src/manager
 
       - name: Kustomize Build
-        run: kustomize build src/config | tee install.yaml
+        run: kustomize build src/manager | tee install.yaml
 
       - name: Release
         uses: softprops/action-gh-release@v2

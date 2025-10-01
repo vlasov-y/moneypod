@@ -18,19 +18,13 @@ jobs:
           go-version-file: src/go.mod
           cache-dependency-path: src/go.sum
 
-      - name: Install the latest version of kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-          chmod 0755 ./kind
-          sudo mv ./kind /usr/local/bin/kind
-
-      - name: Verify kind installation
-        run: kind version
+      - name: Install Task
+        uses: go-task/setup-task@v1
 
       - name: Go mod tidy
         run: go mod tidy
         working-directory: src
 
       - name: Running Test e2e
-        run: make test-e2e
+        run: task test:e2e
         working-directory: src

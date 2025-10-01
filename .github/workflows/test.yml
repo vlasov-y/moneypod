@@ -18,10 +18,13 @@ jobs:
           go-version-file: src/go.mod
           cache-dependency-path: src/go.sum
 
+      - name: Install Task
+        uses: go-task/setup-task@v1
+
       - name: Go mod tidy
         run: go mod tidy
         working-directory: src
 
       - name: Running Test
-        run: make test
+        run: task test:unit
         working-directory: src
