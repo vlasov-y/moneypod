@@ -11,35 +11,20 @@ on:
         required: true
         type: string
         description: Build platform name
-      dind:
-        required: false
-        type: boolean
-        default: false
-        description: Use Docker-in-Docker container
-
-env:
-  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
-  META_TAGS: |
-    type=raw,value=latest,enable={{is_default_branch}}
-    type=semver,pattern={{version}}
-    type=semver,pattern={{major}}.{{minor}}
-    type=semver,pattern={{major}}
-    type=ref,event=branch
-    type=ref,event=pr
-    type=sha
+      image:
+        required: true
+        type: string
+        description: Docker repository image
+      meta-tags:
+        required: true
+        type: string
+        description: Docker meta tags
 
 jobs:
   build:
     name: Build
     runs-on: ${{ inputs.runs-on }}
-    container: ${{ inputs.dind && 'docker:dind-rootless' || null }}
     steps:
-      - name: Setup Docker (self-hosted)
-        if: inputs.dind
-        run: |
-          dockerd-entrypoint.sh &
-          while ! docker info >/dev/null 2>&1; do sleep 1; done
-
       - name: Prepare
         run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
         env:
@@ -52,8 +37,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          tags: ${{ env.META_TAGS }}
+          images: ${{ inputs.image }}
+          tags: ${{ inputs.meta-tags }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -72,10 +57,10 @@ jobs:
           context: src
           platforms: ${{ inputs.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:latest
+          cache-from: type=registry,ref=${{ inputs.image }}:latest
           cache-to: type=inline
           outputs: |-
-            type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+            type=image,name=${{ inputs.image }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |

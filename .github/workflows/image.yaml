@@ -2,12 +2,13 @@ name: Image
 
 on:
   push:
-    # branches:
-    #   - "**"
-    # paths:
-    #   - src/**/*
-    # tags:
-    #   - v*
+    branches:
+      - "**"
+    paths:
+      - src/**/*
+      - .github/**/*
+    tags:
+      - v*
   pull_request:
     branches:
       - main
@@ -15,6 +16,17 @@ on:
 permissions: &permissions
   packages: write
   contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  META_TAGS: |
+    type=raw,value=latest,enable={{is_default_branch}}
+    type=semver,pattern={{version}}
+    type=semver,pattern={{major}}.{{minor}}
+    type=semver,pattern={{major}}
+    type=ref,event=branch
+    type=ref,event=pr
+    type=sha
 
 jobs:
   build:
@@ -27,17 +39,16 @@ jobs:
         include:
           - platform: linux/amd64
             runs-on: ubuntu-24.04
-            dind: false
           - platform: linux/arm64
             runs-on: ubuntu-24.04-arm
-            dind: false
     concurrency:
       group: ${{ github.workflow }}-${{ github.sha }}-${{ matrix.platform }}-build
       cancel-in-progress: false
     with:
       platform: ${{ matrix.platform }}
       runs-on: ${{ matrix.runs-on }}
-      dind: ${{ matrix.dind }}
+      image: ${{ env.IMAGE }}
+      meta-tags: ${{ env.META_TAGS }}
 
   merge:
     name: Merge manifest
@@ -68,15 +79,15 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY_IMAGE }}
+          images: ${{ env.IMAGE }}
           tags: ${{ env.META_TAGS }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' * | \
+          printf '${{ env.IMAGE }}@sha256:%s ' * | \
           xargs docker buildx imagetools create $(jq -Mcr '.tags | map("-t " + .) | join(" ")' <<< "${DOCKER_METADATA_OUTPUT_JSON}")
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
