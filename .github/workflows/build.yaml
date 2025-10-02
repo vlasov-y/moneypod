@@ -12,13 +12,21 @@ on:
         type: string
         description: Build platform name
 
+env:
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+  META_TAGS: |
+    type=raw,value=latest,enable={{is_default_branch}}
+    type=semver,pattern={{version}}
+    type=semver,pattern={{major}}.{{minor}}
+    type=semver,pattern={{major}}
+    type=ref,event=branch
+    type=ref,event=pr
+    type=sha
+
 jobs:
   build:
-    name: Build ${{ inputs.platform }}
+    name: Build
     runs-on: ${{ inputs.runs-on }}
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.sha }}-${{ inputs.platform }}-build
-      cancel-in-progress: false
     steps:
       - name: Prepare
         run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
@@ -34,9 +42,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY_IMAGE }}
           tags: ${{ env.META_TAGS }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
