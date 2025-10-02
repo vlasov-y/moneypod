@@ -29,10 +29,24 @@ env:
     type=sha
 
 jobs:
+  meta:
+    name: Generate metadata
+    runs-on: ubuntu-latest
+    outputs:
+      labels: ${{ steps.meta.outputs.labels }}
+    steps:
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: *image
+          tags: *metaTags
+
   build:
     name: Build
     permissions: *permissions
     uses: ./.github/workflows/build.yaml
+    needs: [meta]
     secrets: inherit
     strategy:
       matrix:
@@ -48,9 +62,7 @@ jobs:
       platform: ${{ matrix.platform }}
       runs-on: ${{ matrix.runs-on }}
       image: *image
-      meta-tags: *metaTags
-      github-ref: ${{ github.ref }}
-      github-ref-type: ${{ github.ref_type }}
+      meta-labels: ${{ needs.meta.outputs.labels }}
 
   merge:
     name: Merge manifest
