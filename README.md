@@ -129,7 +129,6 @@ These annotation are set on nodes.
 | Name                          | Default | Description                                                       |
 | ----------------------------- | ------- | ----------------------------------------------------------------- |
 | `moneypod.io/hourly-price`  | *JSON*  | Controlled by operator, do not change                             |
-| `moneypod.io/enable` | *true*  | Set to "false" in order to disable operator for a particular node |
 
 
 ## License
