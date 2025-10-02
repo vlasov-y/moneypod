@@ -26,11 +26,11 @@ jobs:
       matrix:
         include:
           - platform: linux/amd64
-            runs-on: ubuntu-latest
+            runs-on: ubuntu-24.04
             dind: false
           - platform: linux/arm64
-            runs-on: moneypod-cosmos-arm64
-            dind: true
+            runs-on: ubuntu-24.04-arm
+            dind: false
     concurrency:
       group: ${{ github.workflow }}-${{ github.sha }}-${{ matrix.platform }}-build
       cancel-in-progress: false
