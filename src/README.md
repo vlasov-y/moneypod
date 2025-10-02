@@ -11,8 +11,11 @@ Moneypod is a Kubernetes operator built with Kubebuilder that provides custom re
 ### Prerequisites
 
 - go version v1.24.0+
-- docker version 17.03+.
+- docker version 17.03+
 - [Task](https://taskfile.dev/) for build automation
+- [Pre-commit](https://pre-commit.com/#install) for running git hooks on commit
+
+Execute `pre-commit install` once before start of the development.
 
 ### To Deploy on the cluster
 
