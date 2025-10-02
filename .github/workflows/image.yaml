@@ -27,14 +27,17 @@ jobs:
         include:
           - platform: linux/amd64
             runs-on: ubuntu-latest
+            dind: false
           - platform: linux/arm64
             runs-on: moneypod-cosmos-arm64
+            dind: true
     concurrency:
       group: ${{ github.workflow }}-${{ github.sha }}-${{ matrix.platform }}-build
       cancel-in-progress: false
     with:
       platform: ${{ matrix.platform }}
       runs-on: ${{ matrix.runs-on }}
+      dind: ${{ matrix.dind }}
 
   merge:
     name: Merge manifest

@@ -11,6 +11,11 @@ on:
         required: true
         type: string
         description: Build platform name
+      dind:
+        required: false
+        type: boolean
+        default: false
+        description: Use Docker-in-Docker container
 
 env:
   REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
@@ -27,10 +32,10 @@ jobs:
   build:
     name: Build
     runs-on: ${{ inputs.runs-on }}
-    container: ${{ contains(inputs.runs-on, 'self-hosted') && 'docker:dind-rootless' || null }}
+    container: ${{ inputs.dind && 'docker:dind-rootless' || null }}
     steps:
       - name: Setup Docker (self-hosted)
-        if: contains(runner.name, 'self-hosted')
+        if: inputs.dind
         run: |
           dockerd-entrypoint.sh &
           while ! docker info >/dev/null 2>&1; do sleep 1; done
