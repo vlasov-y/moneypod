@@ -27,8 +27,14 @@ jobs:
   build:
     name: Build
     runs-on: ${{ inputs.runs-on }}
-    container: docker:dind-rootless
+    container: ${{ contains(inputs.runs-on, 'self-hosted') && 'docker:dind-rootless' || null }}
     steps:
+      - name: Setup Docker (self-hosted)
+        if: contains(runner.name, 'self-hosted')
+        run: |
+          dockerd-entrypoint.sh &
+          while ! docker info >/dev/null 2>&1; do sleep 1; done
+
       - name: Prepare
         run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
         env:
