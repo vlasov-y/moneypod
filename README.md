@@ -6,6 +6,14 @@ Operator that monitors node's price and calculate various costs (per pod, per ap
 
 Operator watches Nodes and Pods. First, it identifies Node's price using implemented providers.
 
+## Getting Started
+
+Install using kustomize.
+
+```shell
+kubectl apply -f https://github.com/vlasov-y/moneypod/releases/latest/download/install.yaml
+```
+
 ## Dashboard
 
 :eyeglasses: See a dashboard snapshot example [**here**](https://snapshots.raintank.io/dashboard/snapshot/sW9EElMGYSe0qMWPTmG60xO6rSDFVO6M).  
@@ -23,6 +31,54 @@ Operator goes to the AWS using Pod Identity and describes the instance.
 
 - If the instance is spot - prices is take from the respective spot request.
 - Else - price is taken from Pricing API for particular instance type in the particular region.
+
+That is how you can create respective IAM resources with Terraform
+
+```ruby
+terraform {
+  required_version = "< 2.0.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "< 7.0.0"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "< 4.0.0"
+    }
+  }
+}
+
+data "http" "moneypod_iam_policy" {
+  url = "https://github.com/vlasov-y/moneypod/releases/latest/download/aws-iam-policy.json"
+  lifecycle {
+    postcondition {
+      condition     = self.status_code >= 200 && self.status_code <= 299
+      error_message = "Failed to download the policy"
+    }
+  }
+}
+
+module "pod_identity_moneypod" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "< 3.0.0"
+  
+  create = true
+  name   = "${var.name}-moneypod"
+  associations = {
+    moneypod = {
+      cluster_name = var.cluster_name
+      namespace = "moneypod"
+      service_account = "moneypod-app"
+    }
+  }
+
+  attach_custom_policy = true
+  policy_statements    = jsondecode(data.http.moneypod_iam_policy.response_body).Statement
+
+  tags = var.tags
+}
+```
 
 #### Manual
 
@@ -50,14 +106,6 @@ metadata:
   labels:
     node.kubernetes.io/instance-type: t3a.2xlarge
     topology.kubernetes.io/zone: eu-central-1b
-```
-
-## Getting Started
-
-Install using kustomize.
-
-```shell
-kubectl apply -f https://github.com/vlasov-y/moneypod/releases/latest/download/install.yaml
 ```
 
 ## CLI args
@@ -126,9 +174,9 @@ resources:
 
 These annotation are set on nodes.
 
-| Name                          | Default | Description                                                       |
-| ----------------------------- | ------- | ----------------------------------------------------------------- |
-| `moneypod.io/hourly-price`  | *JSON*  | Controlled by operator, do not change                             |
+| Name                       | Default | Description                           |
+| -------------------------- | ------- | ------------------------------------- |
+| `moneypod.io/hourly-price` | *JSON*  | Controlled by operator, do not change |
 
 
 ## License
