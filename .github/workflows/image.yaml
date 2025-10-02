@@ -1,7 +1,3 @@
-#  o┌┌┐┬─┐┌─┐┬─┐
-#  │││││─┤│ ┬├─
-#  ┘┘ ┘┘ ┘┘─┘┴─┘
-
 name: Image
 
 on:
@@ -27,77 +23,26 @@ env:
     type=ref,event=pr
     type=sha
 
-permissions:
+permissions: &permissions
   packages: write
   contents: read
 
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.sha }}-${{ matrix.platform }}-build
-      cancel-in-progress: false
+    permissions: *permissions
+    uses: ./.github/workflows/build.yaml
+    secrets: inherit
     strategy:
-      fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-    steps:
-      - name: Prepare
-        run: echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
-        env:
-          PLATFORM: ${{ matrix.platform }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-          tags: ${{ env.META_TAGS }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push by digest
-        id: build
-        uses: docker/build-push-action@v5
-        with:
-          context: src
-          platforms: ${{ matrix.platform }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY_IMAGE }}:latest
-          cache-to: type=inline
-          outputs: |-
-            type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
-
-      - name: Export digest
-        run: |
-          mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
-
-      - name: Upload digest
-        uses: actions/upload-artifact@v4
-        with:
-          name: digests-${{ env.PLATFORM_PAIR }}
-          path: /tmp/digests/*
-          if-no-files-found: error
-          retention-days: 1
+        include:
+          - platform: linux/amd64
+            runs-on: ubuntu-latest
+          - site: linux/arm64
+            runs-on: moneypod-cosmos-arm64
+    with:
+      platform: ${{ matrix.platform }}
+      runs-on: ${{ matrix.runs-on }}
 
   merge:
     name: Merge manifest
