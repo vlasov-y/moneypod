@@ -2,12 +2,12 @@ name: Image
 
 on:
   push:
-    branches:
-      - "**"
-    paths:
-      - src/**/*
-    tags:
-      - v*
+    # branches:
+    #   - "**"
+    # paths:
+    #   - src/**/*
+    # tags:
+    #   - v*
   pull_request:
     branches:
       - main
