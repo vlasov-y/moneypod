@@ -49,6 +49,8 @@ jobs:
       runs-on: ${{ matrix.runs-on }}
       image: *image
       meta-tags: *metaTags
+      github-ref: ${{ github.ref }}
+      github-ref-type: ${{ github.ref_type }}
 
   merge:
     name: Merge manifest

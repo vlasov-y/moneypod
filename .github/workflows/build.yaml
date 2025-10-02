@@ -19,6 +19,14 @@ on:
         required: true
         type: string
         description: Docker meta tags
+      github-ref:
+        required: true
+        type: string
+        description: GitHub ref from calling workflow
+      github-ref-type:
+        required: true
+        type: string
+        description: GitHub ref type from calling workflow
 
 jobs:
   build:
@@ -39,6 +47,9 @@ jobs:
         with:
           images: ${{ inputs.image }}
           tags: ${{ inputs.meta-tags }}
+        env:
+          GITHUB_REF: ${{ inputs.github-ref }}
+          GITHUB_REF_TYPE: ${{ inputs.github-ref-type }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

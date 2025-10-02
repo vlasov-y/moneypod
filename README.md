@@ -34,7 +34,7 @@ Operator goes to the AWS using Pod Identity and describes the instance.
 
 That is how you can create respective IAM resources with Terraform
 
-```ruby
+```terraform
 terraform {
   required_version = "< 2.0.0"
   required_providers {
