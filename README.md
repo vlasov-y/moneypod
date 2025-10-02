@@ -53,30 +53,39 @@ data "http" "moneypod_iam_policy" {
   url = "https://github.com/vlasov-y/moneypod/releases/latest/download/aws-iam-policy.json"
   lifecycle {
     postcondition {
-      condition     = self.status_code >= 200 && self.status_code <= 299
+      condition     = self.status_code >= 200 && self.status_code <= 299 && can(jsondecode(self.response_body))
       error_message = "Failed to download the policy"
     }
   }
 }
 
-module "pod_identity_moneypod" {
+module "irsa_moneypod" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "< 3.0.0"
-  
-  create = true
+
+  create = var.deploy_moneypod
   name   = "${var.name}-moneypod"
   associations = {
     moneypod = {
-      cluster_name = var.cluster_name
-      namespace = "moneypod"
+      cluster_name    = var.cluster_name
+      namespace       = var.system_namespace
       service_account = "moneypod-app"
     }
   }
 
-  attach_custom_policy = true
-  policy_statements    = jsondecode(data.http.moneypod_iam_policy.response_body).Statement
+  additional_policy_arns = {
+    moneypod = try(aws_iam_policy.moneypod[0].arn, "")
+  }
 
   tags = var.tags
+}
+
+
+resource "aws_iam_policy" "moneypod" {
+  count       = var.deploy_moneypod ? 1 : 0
+  name_prefix = "${var.name}-moneypod"
+  description = "MoneyPod operator policy"
+  policy      = data.http.moneypod_iam_policy.response_body
 }
 ```
 
