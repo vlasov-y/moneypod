@@ -10,7 +10,7 @@ spec:
         - record: moneypod:pod_cpu_total_cost
           expr: |
             (pod_cpu_usage_seconds_total / 3600)
-            * on(cluster, node, namespace, pod) group_left (owner_kind, owner_name)
+            * on(cluster, node, namespace, pod) group_left(owner_kind, owner_name)
             moneypod_pod_cpu_hourly_cost
 
         - record: moneypod:pod_memory_total_cost
@@ -48,5 +48,5 @@ spec:
         - record: moneypod:node_total_cost
           expr: |
             ((time() - kube_node_created) / 3600)
-            * on(cluster, node)
+            * on(cluster, node) group_left(availability_zone, type, capacity)
             moneypod_node_hourly_cost
