@@ -26,6 +26,7 @@ vars:
   localBin: "{{ .ROOT_DIR }}/bin"
   kubeconfig: '{{ print .ROOT_DIR "/kubeconfig.yaml" }}'
   envtestVersion: latest
+  distPath: "{{ .ROOT_DIR }}/dist"
   manifestPath:
     map:
       root: "{{ .ROOT_DIR }}/config/kind"
@@ -72,7 +73,7 @@ tasks:
       - task: kind:clean
       - task: test:clean
       - task: tools:clean
-      - rm -rvf {{ squote .TASK_TEMP_DIR }} install.yaml
+      - rm -rvf {{ squote .TASK_TEMP_DIR }} {{ squote .distPath }}
 
   install-crds:
     desc: Install operator CRDs

@@ -38,7 +38,10 @@ tasks:
     desc: Created install.yaml with all manifests compiled
     deps: [tools:kustomize]
     cmds:
+      - mkdir -p {{ squote .distPath }}
       - |-
         cd {{ squote .manifestPath.distribute }}
         {{ .bin.kustomize }} edit set image {{ print "controller=" .image | squote }}
-      - "{{ .bin.kustomize }} build {{ squote .manifestPath.distribute }} >install.yaml"
+      - '{{ .bin.kustomize }} build {{ squote .manifestPath.distribute }} >{{ print .distPath "/install.yaml" | squote }}'
+      - 'cp -vf {{ print .manifestPath.distribute "/prometheus/dashboard.json" | squote }} {{ print .distPath "/dashboard.json" | squote }}'
+      - 'cp -vf {{ print .manifestPath.distribute "/prometheus/iam-policy.json" | squote }} {{ print .distPath "/dashboard.json" | squote }}'

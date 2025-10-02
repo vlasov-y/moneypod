@@ -1,4 +1,4 @@
-# moneypod
+# MoneyPod
 
 Operator that monitors node's price and calculate various costs (per pod, per application, per namespace, etc.).
 
@@ -8,8 +8,8 @@ Operator watches Nodes and Pods. First, it identifies Node's price using impleme
 
 ## Dashboard
 
-See a dashboard snapshot example [here](https://snapshots.raintank.io/dashboard/snapshot/JKGeZ2NtnppnJuAlBONZboLeji2gW8eV).
-Dashboard can be download [here](src/config/manager/prometheus/dashboard.json).
+:eyeglasses: See a dashboard snapshot example [**here**](https://snapshots.raintank.io/dashboard/snapshot/sW9EElMGYSe0qMWPTmG60xO6rSDFVO6M).  
+:arrow_down_small: Dashboard can be downloaded [**here**](src/config/manager/prometheus/dashboard.json).
 
 ### Providers
 

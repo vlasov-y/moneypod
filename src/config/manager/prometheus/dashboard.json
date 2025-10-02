@@ -85,7 +85,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (node) (\n        moneypod:node_total_cost{cluster=~\"$cluster\"}\n    )\n) > 0",
+          "expr": "topk($topk,\n    sum by (node) (\n        moneypod:node_total_cost{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -160,7 +160,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_total_cost{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n) > 0",
+          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_total_cost{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -236,7 +236,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (namespace) (\n        moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n) > 0",
+          "expr": "topk($topk,\n    sum by (namespace) (\n        moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -342,7 +342,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    rate(\n        sum by (namespace) (\n            moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        ) [$__rate_interval]\n    )\n) > 0",
+          "expr": "topk($topk,\n    rate(\n        sum by (namespace) (\n            moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        ) [$__rate_interval]\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -416,7 +416,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n) > 0",
+          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -520,7 +520,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    rate(\n        sum by (owner_kind, owner_name) (\n            moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        ) [$__rate_interval]\n    )\n) > 0",
+          "expr": "topk($topk,\n    rate(\n        sum by (owner_kind, owner_name) (\n            moneypod:pod_effective_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        ) [$__rate_interval]\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -750,7 +750,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum by (node) (moneypod:pod_usage_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n/ on (node) (moneypod:node_total_cost{cluster=~\"$cluster\"})",
+          "expr": "bottomk($topk,\n    (\n        sum by (node) (moneypod:pod_usage_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on (node) (moneypod:node_total_cost{cluster=~\"$cluster\"})\n    ) < 1\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -950,6 +950,26 @@
         "options": [
           {
             "selected": false,
+            "text": "5s",
+            "value": "5s"
+          },
+          {
+            "selected": false,
+            "text": "10s",
+            "value": "10s"
+          },
+          {
+            "selected": false,
+            "text": "15s",
+            "value": "15s"
+          },
+          {
+            "selected": false,
+            "text": "30s",
+            "value": "30s"
+          },
+          {
+            "selected": false,
             "text": "1m",
             "value": "1m"
           },
@@ -1024,7 +1044,7 @@
             "value": "30d"
           }
         ],
-        "query": "1m,2m,5m,10m,15m,30m,1h,2h,3h,6h,12h,1d,7d,14d,30d",
+        "query": "5s,10s,15s,30s,1m,2m,5m,10m,15m,30m,1h,2h,3h,6h,12h,1d,7d,14d,30d",
         "refresh": 2,
         "type": "interval"
       }
