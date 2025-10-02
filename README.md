@@ -6,6 +6,11 @@ Operator that monitors node's price and calculate various costs (per pod, per ap
 
 Operator watches Nodes and Pods. First, it identifies Node's price using implemented providers.
 
+## Dashboard
+
+See a dashboard snapshot example [here](https://snapshots.raintank.io/dashboard/snapshot/JKGeZ2NtnppnJuAlBONZboLeji2gW8eV).
+Dashboard can be download [here](src/config/manager/prometheus/dashboard.json).
+
 ### Providers
 
 Price is saved to the annotation `moneypod.io/node-hourly-cost` on the Node object.

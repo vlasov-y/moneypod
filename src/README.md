@@ -22,6 +22,16 @@ task kind:bootstrap install-operator
 
 >**NOTE**: Ensure that the samples has default values to test it out.
 
+### Grafana dashboard development
+
+Install operator and then install victoria-metrics cluster.
+
+```sh
+task install-operator kind:victoria-metrics
+```
+
+You have to execute this command every time you want to redeploy dashboard from the file again.
+
 ### To Uninstall
 
 This will uninstall the operator and CRDs if any, but leave the cluster running.

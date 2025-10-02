@@ -3,6 +3,11 @@ kind: Kustomization
 resources:
   - monitor.yaml
   - rules.yaml
-  - dashboards
 configurations:
   - kustomizeconfig.yaml
+configMapGenerator:
+  - name: dashboards
+    options:
+      disableNameSuffixHash: true
+    files:
+      - dashboard.json

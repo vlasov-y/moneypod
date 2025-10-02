@@ -76,7 +76,7 @@ tasks:
 
   install-crds:
     desc: Install operator CRDs
-    deps: [generate:all]
+    deps: [generate:all, kind:bootstrap]
     cmds:
       - "{{ .bin.kubectl }} apply --wait -k {{ squote .manifestPath.crds }}"
     status:

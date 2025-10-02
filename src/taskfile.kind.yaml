@@ -20,6 +20,7 @@ tasks:
         KUBECONFIG={{ squote .kubeconfig }} {{ .bin.kind }} create cluster
         --name {{ .kind.name }} --config {{ .kind.configPath }}
       - chmod 0600 {{ squote .kubeconfig }}
+      - task: kubeconfig
     status:
       - "{{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}"
 
@@ -36,7 +37,6 @@ tasks:
 
   victoria-metrics:
     desc: Same as bootstrap + install victoria-metrics and grafana
-    deps: [bootstrap]
     cmds:
       - "{{ .bin.kubectl }} apply --wait -k flux/victoria-metrics"
       - >-
@@ -47,14 +47,22 @@ tasks:
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Available deployments --all --timeout=5m"
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for='jsonpath={.status.updateStatus}=operational' vmsingles,vmalerts,vmagents --all --timeout=10m"
       - "{{ .bin.kubectl }} -n victoria-metrics rollout restart deployment victoria-metrics-grafana"
+      - |
+        if ! {{ .bin.kubectl }} -n moneypod get vmrules moneypod-rules 1>/dev/null; then
+          {{ .bin.kubectl }} -n victoria-metrics rollout restart deployment victoria-metrics-victoria-metrics-operator
+        fi
       - "{{ .bin.kubectl }} wait -n victoria-metrics --for=condition=Ready pods --all --timeout=5m"
       - "echo 'info: default Grafana credentials are admin:admin'"
+    preconditions:
+      - sh: "{{ .bin.kubectl }} -n moneypod get configmap moneypod-dashboards -o name 1>/dev/null"
+        msg: Install operator first with `task install-operator`
 
   kubeconfig:
     desc: Export kubeconfig to {{ .kubeconfig }}
     deps: [create]
     cmds:
       - "{{ .bin.kind }} export kubeconfig --name {{ .kind.name }} --kubeconfig {{ squote .kubeconfig }}"
+      - "{{ .bin.kubectl }} config set-context --current --namespace=moneypod"
 
   load:
     desc: Load image into cluster
