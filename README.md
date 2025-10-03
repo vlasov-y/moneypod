@@ -16,7 +16,7 @@ kubectl apply -f https://github.com/vlasov-y/moneypod/releases/latest/download/i
 
 ## Dashboard
 
-:eyeglasses: See a dashboard snapshot example [**here**](https://snapshots.raintank.io/dashboard/snapshot/sW9EElMGYSe0qMWPTmG60xO6rSDFVO6M).  
+:eyeglasses: See a dashboard snapshot example [**here**](https://snapshots.raintank.io/dashboard/snapshot/9foBa22o0IYpz2tiTPLfj8OISLu4w2Ja).  
 :arrow_down_small: Dashboard can be downloaded [**here**](src/config/manager/prometheus/dashboard.json).
 
 ### Providers
