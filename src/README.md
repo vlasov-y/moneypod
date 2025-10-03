@@ -33,7 +33,8 @@ Install operator and then install victoria-metrics cluster.
 task install-operator kind:victoria-metrics
 ```
 
-You have to execute this command every time you want to redeploy dashboard from the file again.
+You have to execute this command every time you want to redeploy dashboard from the file again.  
+Grafana is reachable at [http://localhost](http://localhost).
 
 ### To Uninstall
 

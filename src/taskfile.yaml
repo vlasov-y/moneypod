@@ -88,7 +88,7 @@ tasks:
     deps: [install-crds]
     cmds:
       - "{{ .bin.kubectl }} apply --wait -k {{ squote .manifestPath.root }}"
-      - "{{ .bin.kubectl }} -n {{ squote .name }} wait --for=condition=Available deployments --all"
+      - "{{ .bin.kubectl }} -n {{ squote .name }} wait --for=condition=Available deployments --all --timeout=5m"
 
   uninstall-crds:
     desc: Uninstall operator CRDs

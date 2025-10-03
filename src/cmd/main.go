@@ -31,6 +31,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
@@ -39,6 +40,7 @@ import (
 
 	"github.com/vlasov-y/moneypod/internal/controller"
 	"github.com/vlasov-y/moneypod/internal/monitoring"
+	"github.com/vlasov-y/moneypod/internal/types"
 	metricsv1beta1 "k8s.io/metrics/pkg/apis/metrics/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
@@ -64,6 +66,9 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var qps float64
+	var burst int
+	var maxConcurrentReconciles int
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -71,6 +76,10 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.Float64Var(&qps, "qps", 20, "QPS to use while talking with kubernetes apiserver")
+	flag.IntVar(&burst, "burst", 30, "Burst to use while talking with kubernetes apiserver")
+	flag.IntVar(&maxConcurrentReconciles, "max-concurrent-reconciles", 10,
+		"Maximum number of concurrent reconciles per reconciler")
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
@@ -174,13 +183,21 @@ func main() {
 		})
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	rc := ctrl.GetConfigOrDie()
+	rc.QPS = float32(qps)
+	rc.Burst = burst
+
+	mgr, err := ctrl.NewManager(rc, ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "ef7682df.moneypod.io",
+		Controller: config.Controller{
+			MaxConcurrentReconciles: maxConcurrentReconciles,
+		},
+
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -199,19 +216,23 @@ func main() {
 	}
 
 	if err := (&controller.NodeReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Config:   mgr.GetConfig(),
-		Recorder: mgr.GetEventRecorderFor("MoneyPod"),
+		Client: mgr.GetClient(),
+		Reconciler: types.Reconciler{
+			Scheme:   mgr.GetScheme(),
+			Config:   mgr.GetConfig(),
+			Recorder: mgr.GetEventRecorderFor("MoneyPod"),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Node")
 		os.Exit(1)
 	}
 	if err := (&controller.PodReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Config:   mgr.GetConfig(),
-		Recorder: mgr.GetEventRecorderFor("MoneyPod"),
+		Client: mgr.GetClient(),
+		Reconciler: types.Reconciler{
+			Scheme:   mgr.GetScheme(),
+			Config:   mgr.GetConfig(),
+			Recorder: mgr.GetEventRecorderFor("MoneyPod"),
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)

@@ -6,14 +6,25 @@ repos:
   - repo: https://github.com/zricethezav/gitleaks
     rev: v8.28.0
     hooks:
-      - id: gitleaks
+      - name: GitLeaks
+        id: gitleaks
         args:
           - --config=gitleaks.toml
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
-      - id: check-merge-conflict
-      - id: end-of-file-fixer
+      - name: No merge conflicts
+        id: check-merge-conflict
+      - name: End of files to have a newline
+        id: end-of-file-fixer
+      - name: Executables have shebang
+        id: check-executables-have-shebangs
+      - name: Symlinks are valid
+        id: check-symlinks
+      - name: No submodules
+        id: forbid-submodules
+      - name: No mixed line ending
+        id: mixed-line-ending
   - repo: local
     hooks:
       - id: regenerate-manifests

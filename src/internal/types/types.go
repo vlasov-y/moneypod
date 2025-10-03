@@ -2,8 +2,9 @@
 package types
 
 import (
-	"os"
-	"strconv"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -20,18 +21,12 @@ const (
 	UnknownCost = "unknown"
 )
 
-// MaxConcurrentReconciles defines the maximum number of concurrent reconciles per controller.
-var MaxConcurrentReconciles int = func() int {
-	str := os.Getenv("MAX_CONCURRENT_RECONCILES")
-	if str == "" {
-		return 10
-	}
-	i, err := strconv.ParseInt(str, 10, 32)
-	if err != nil {
-		panic(err)
-	}
-	return int(i)
-}()
+type Reconciler struct {
+	Config                  *rest.Config
+	Scheme                  *runtime.Scheme
+	Recorder                record.EventRecorder
+	MaxConcurrentReconciles int
+}
 
 type NodeCapacity string
 
