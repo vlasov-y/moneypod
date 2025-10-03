@@ -754,7 +754,7 @@
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
-          "legendFormat": "__auto",
+          "legendFormat": "{{node}}",
           "range": true,
           "refId": "A"
         }
@@ -814,9 +814,7 @@
         "allowCustomValue": true,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -842,9 +840,7 @@
         "allValue": ".+",
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -871,9 +867,7 @@
         "allowCustomValue": true,
         "current": {
           "text": "All",
-          "value": [
-            "$__all"
-          ]
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
@@ -942,14 +936,14 @@
         "auto_count": 50,
         "auto_min": "15s",
         "current": {
-          "text": "15s",
-          "value": "15s"
+          "text": "$__auto",
+          "value": "$__auto"
         },
         "label": "Min Step",
         "name": "min_step",
         "options": [
           {
-            "selected": true,
+            "selected": false,
             "text": "15s",
             "value": "15s"
           },
