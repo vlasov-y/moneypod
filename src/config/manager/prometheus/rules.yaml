@@ -20,8 +20,9 @@ spec:
             avg_over_time(
                 sum by (cluster, namespace, pod) (
                   container_memory_working_set_bytes{image!="", container!=""}
-                ) / 1024 / 1024 [5m]
+                ) [5m]
               )
+            / 1024 / 1024
             * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_memory_hourly_cost
 
