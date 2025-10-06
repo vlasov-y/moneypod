@@ -193,6 +193,9 @@ These annotation are set on nodes.
 | -------------------------- | ------- | ------------------------------------- |
 | `moneypod.io/hourly-price` | *JSON*  | Controlled by operator, do not change |
 
+## Acknowledgements
+
+Thanks to [Artem](https://github.com/aryanesj) for the idea and help in dashboard development ❤️
 
 ## License
 
