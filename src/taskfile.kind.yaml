@@ -57,6 +57,24 @@ tasks:
       - sh: "{{ .bin.kubectl }} -n moneypod get configmap moneypod-dashboards -o name 1>/dev/null"
         msg: Install operator first with `task install-operator`
 
+  prometheus:
+    desc: Same as bootstrap + install prometheus and grafana
+    cmds:
+      - "{{ .bin.kubectl }} apply --wait -k flux/prometheus"
+      - >-
+        {{ .bin.kubectl }} -n moneypod get configmap moneypod-dashboards -o jsonpath={.data} |
+        xargs -0 printf "%s\ndata: %s" "$({{ .bin.kubectl }} create configmap -n prometheus -o yaml --dry-run=client moneypod-dashboards)" |
+        {{ .bin.kubectl }} apply -f -
+      - "{{ .bin.kubectl }} wait -n prometheus --for=condition=Ready helmreleases --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n prometheus --for=condition=Available deployments --all --timeout=5m"
+      - "{{ .bin.kubectl }} wait -n prometheus --for=condition=Available prometheuses --all --timeout=10m"
+      - "{{ .bin.kubectl }} -n prometheus rollout restart deployment prometheus-grafana"
+      - "{{ .bin.kubectl }} wait -n prometheus --for=condition=Ready pods --all --timeout=5m"
+      - "echo 'info: default Grafana credentials are admin:admin'"
+    preconditions:
+      - sh: "{{ .bin.kubectl }} -n moneypod get configmap moneypod-dashboards -o name 1>/dev/null"
+        msg: Install operator first with `task install-operator`
+
   kubeconfig:
     desc: Export kubeconfig to {{ .kubeconfig }}
     deps: [create]

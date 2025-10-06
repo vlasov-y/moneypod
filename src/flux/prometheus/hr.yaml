@@ -1,41 +1,35 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
-  name: victoria-metrics
+  name: prometheus
 spec:
   interval: 1h
   provider: generic
-  url: https://victoriametrics.github.io/helm-charts
+  url: https://prometheus-community.github.io/helm-charts
 ---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: victoria-metrics
+  name: prometheus
 spec:
-  releaseName: victoria-metrics
+  releaseName: prometheus
   interval: 1h
   timeout: 5m
   chart:
     spec:
-      chart: victoria-metrics-k8s-stack
+      chart: kube-prometheus-stack
       reconcileStrategy: ChartVersion
       sourceRef:
         kind: HelmRepository
-        name: victoria-metrics
-      version: <1.0.0
+        name: prometheus
+      version: <78.0.0
   install:
     crds: CreateReplace
   upgrade:
     crds: CreateReplace
   values:
-    nameOverride: victoria-metrics
-    fullnameOverride: victoria-metrics
-    alertmanager:
-      enabled: true
-    defaultDashboardsEnabled: false
-    defaultRules:
-      create: false
-    experimentalDashboardsEnabled: false
+    nameOverride: prometheus
+    fullnameOverride: prometheus
     grafana:
       enabled: true
       adminPassword: admin
@@ -66,7 +60,7 @@ spec:
       enabled: false
     prometheus-node-exporter:
       enabled: false
-    victoria-metrics-operator:
+    prometheus-operator:
       admissionWebhooks:
         certManager:
           enabled: true
@@ -77,15 +71,19 @@ spec:
         useCustomConfigReloader: true
       serviceMonitor:
         enabled: false
-    vmalert:
+    prometheus:
       enabled: true
-    vmsingle:
-      enabled: true
-      spec:
-        retentionPeriod: 1d
-        storage:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      prometheusSpec:
+        retention: 1d
+        ruleSelectorNilUsesHelmValues: false
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi

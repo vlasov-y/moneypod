@@ -9,7 +9,9 @@ spec:
       rules:
         - record: moneypod:pod_cpu_total_cost
           expr: |
-            (pod_cpu_usage_seconds_total / 3600)
+            sum by (cluster, node, namespace, pod) (
+              container_cpu_usage_seconds_total{image!="", container!=""}
+            ) / 3600
             * on(cluster, node, namespace, pod) group_left(owner_kind, owner_name)
             moneypod_pod_cpu_hourly_cost
 
@@ -17,11 +19,9 @@ spec:
           expr: |
             ((time() - kube_pod_created) / 3600)
             * on(cluster, namespace, pod)
-            avg_over_time(
-                sum by (cluster, namespace, pod) (
-                  container_memory_working_set_bytes{image!="", container!=""}
-                ) [5m]
-              )
+            sum by (cluster, namespace, pod) (
+              avg_over_time(container_memory_working_set_bytes{image!="", container!=""}[1h])
+            )
             / 1024 / 1024
             * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_memory_hourly_cost
