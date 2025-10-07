@@ -61,11 +61,12 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 	} else {
 		// ...if it is defined
 		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil || hourlyCost == 0 {
-			msg := fmt.Sprintf("failed to parse the cost: %s", annotations[AnnotationNodeHourlyCost])
 			if hourlyCost == 0 {
-				msg = "node hourly cost has been set to 0 so reevaluation is required"
+				log.Info("node hourly cost has been set to 0 so reevaluation is required")
+			} else {
+				msg := fmt.Sprintf("failed to parse the cost: %s", annotations[AnnotationNodeHourlyCost])
+				log.Error(err, msg)
 			}
-			log.Error(err, msg)
 			// If price is broken - delete the annotation
 			newAnnotations := map[string]string{}
 			for k, v := range annotations {
