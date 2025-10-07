@@ -119,6 +119,11 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 							Value: ptr.To("NA"),
 							Type:  pricingTypes.FilterTypeTermMatch,
 						},
+						{
+							Field: ptr.To("tenancy"),
+							Value: ptr.To("Shared"),
+							Type:  pricingTypes.FilterTypeTermMatch,
+						},
 					},
 				}
 				// Verbose filters log
@@ -151,9 +156,8 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 							dimensionData := dimension.(map[string]interface{})
 							pricePerUnit := dimensionData["pricePerUnit"].(map[string]interface{})
 							priceStr := pricePerUnit["USD"].(string)
-
-							if hourlyCost, err = strconv.ParseFloat(priceStr, 64); err != nil {
-								msg := fmt.Sprintf("failed to parse the on-demand price: %s", priceStr)
+							if hourlyCost, err = strconv.ParseFloat(priceStr, 64); err != nil || hourlyCost == 0 {
+								msg := fmt.Sprintf("failed to parse the on-demand price or it is zero: %s", priceStr)
 								log.Error(err, msg)
 								return
 							}
