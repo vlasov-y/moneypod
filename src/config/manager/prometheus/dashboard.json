@@ -76,7 +76,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -151,7 +151,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -160,7 +160,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_total_cost{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_total_cost{cluster=~\"$cluster\"}\n        )\n        * on(node) group_left(instance, role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -227,7 +227,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -297,7 +297,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -333,7 +334,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -407,7 +408,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -477,7 +478,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": 0
               },
               {
                 "color": "red",
@@ -511,7 +513,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -582,7 +584,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "dark-red"
+                "color": "dark-red",
+                "value": 0
               },
               {
                 "color": "red",
@@ -626,7 +629,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -635,7 +638,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_usage_total_cost{namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        / on (cluster, namespace, pod) group_left (owner_kind, owner_name)\n        (moneypod:pod_requests_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"} > 0)\n    ) < 1\n)",
+          "expr": "bottomk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_usage_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        / on(cluster, namespace, pod) group_left(instance, owner_kind, owner_name)\n        (moneypod:pod_requests_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"} > 0)\n    ) < 1\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -697,7 +700,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "dark-red"
+                "color": "dark-red",
+                "value": 0
               },
               {
                 "color": "red",
@@ -741,7 +745,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.0.2",
+      "pluginVersion": "12.1.1",
       "targets": [
         {
           "datasource": {
@@ -750,7 +754,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node) (moneypod:pod_usage_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on (cluster, node) (moneypod:node_total_cost{cluster=~\"$cluster\"})\n    ) < 1\n)",
+          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node) (moneypod:pod_usage_total_cost{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on(cluster, node) group_left(instance)\n        moneypod:node_total_cost{cluster=~\"$cluster\"}\n    ) < 1\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -772,8 +776,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "VictoriaMetrics",
-          "value": "P4169E866C3094E38"
+          "text": "Prometheus",
+          "value": "prometheus"
         },
         "label": "Datasource",
         "name": "datasource",
@@ -891,8 +895,8 @@
       },
       {
         "current": {
-          "text": "10",
-          "value": "10"
+          "text": "50",
+          "value": "50"
         },
         "label": "Topk",
         "name": "topk",
@@ -908,7 +912,7 @@
             "value": "5"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "10",
             "value": "10"
           },
@@ -923,7 +927,7 @@
             "value": "30"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "50",
             "value": "50"
           }
