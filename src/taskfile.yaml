@@ -25,7 +25,6 @@ vars:
   image: ghcr.io/vlasov-y/moneypod
   localBin: "{{ .ROOT_DIR }}/bin"
   kubeconfig: '{{ print .ROOT_DIR "/kubeconfig.yaml" }}'
-  envtestVersion: latest
   distPath: "{{ .ROOT_DIR }}/dist"
   manifestPath:
     map:

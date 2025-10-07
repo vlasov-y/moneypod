@@ -10,7 +10,10 @@ includes:
 tasks:
   all:
     desc: Aggregator for manifests, code, fmt and vet
-    deps: [manifests, code, fmt, vet]
+    deps: [fmt, vet]
+    cmds:
+      - task: manifests
+      - task: code
 
   manifests:
     desc: Generate WebhookConfiguration, ClusterRole and CustomResourceDefinitions
