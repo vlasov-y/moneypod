@@ -12,12 +12,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GetNodeInfo(ctx context.Context, r record.EventRecorder, node *corev1.Node) (info types.NodeInfo, err error) {
+func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorder, node *corev1.Node) (info types.NodeInfo, err error) {
 	log := logf.FromContext(ctx)
 
 	// Gather node information
 	var instanceID string
-	if instanceID, err = getInstanceID(ctx, r, node); err != nil {
+	if instanceID, err = provider.getInstanceID(ctx, r, node); err != nil {
 		return
 	}
 	info.ID = instanceID

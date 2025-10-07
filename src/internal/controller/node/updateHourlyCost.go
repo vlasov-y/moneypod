@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
-	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
+	"github.com/vlasov-y/moneypod/internal/controller/providers"
 	. "github.com/vlasov-y/moneypod/internal/types"
 	. "github.com/vlasov-y/moneypod/internal/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -27,26 +26,17 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 
 	// Calculate Node hourly cost if annotationHourlyCost is not set or unknown
 	if a, exists := annotations[AnnotationNodeHourlyCost]; !exists || a == UnknownCost {
-		// Switch by provider
-		if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
-			if hourlyCost, err = aws.GetNodeHourlyCost(ctx, r, node); err != nil {
-				if CheckRequeue(err) {
-					return hourlyCost, ErrRequestRequeue
-				}
-				return
+		provider := providers.NewProvider(node)
+		if hourlyCost, err = provider.GetNodeHourlyCost(ctx, r, node); err != nil {
+			if CheckRequeue(err) {
+				return hourlyCost, ErrRequestRequeue
 			}
-		} else {
-			// If no provider is implemented - expect user to set it
-			if hourlyCost, err = manual.GetNodeHourlyCost(ctx, r, node); err != nil {
-				if CheckRequeue(err) {
-					return hourlyCost, ErrRequestRequeue
-				}
-				return
-			}
+			return
 		}
 
 		// Add respective annotation
 		if hourlyCost > 0 {
+			log.V(2).Info("hourly cost is greater than zero", "hourlyCost", hourlyCost)
 			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 7, 64)
 		} else {
 			annotations[AnnotationNodeHourlyCost] = UnknownCost

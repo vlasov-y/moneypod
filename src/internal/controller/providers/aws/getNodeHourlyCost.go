@@ -18,12 +18,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1.Node) (hourlyCost float64, err error) {
+func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1.Node) (hourlyCost float64, err error) {
 	log := logf.FromContext(ctx)
 
 	// Get instanceID
 	var instanceID string
-	if instanceID, err = getInstanceID(ctx, r, node); err != nil {
+	if instanceID, err = provider.getInstanceID(ctx, r, node); err != nil {
 		return
 	}
 
@@ -53,6 +53,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 		for _, instance := range reservation.Instances {
 			// If instance is spot - get spot reservation price
 			if instance.SpotInstanceRequestId != nil {
+				log.V(2).Info("instance has a spot request")
 				// Get spot price from spot instance request
 				var spotResult *ec2.DescribeSpotInstanceRequestsOutput
 				if spotResult, err = clientEc2.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
@@ -65,22 +66,26 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 
 				if len(spotResult.SpotInstanceRequests) > 0 {
 					spotPrice := spotResult.SpotInstanceRequests[0].SpotPrice
+					log.V(2).Info("spot price is defined", "price", spotPrice)
 					// Convert hourly cost to float
 					if hourlyCost, err = strconv.ParseFloat(*spotPrice, 64); err != nil {
 						msg := fmt.Sprintf("failed to parse the spot price: %s", *spotPrice)
 						log.V(1).Error(err, msg)
 						return
 					}
-					log.V(1).Info(fmt.Sprintf("Spot instance price: %s", *spotPrice))
+					log.V(1).Info(fmt.Sprintf("spot instance price: %s", *spotPrice))
 					r.Eventf(node, corev1.EventTypeNormal, "HourlyCost", *spotPrice)
 				} else {
+					log.V(2).Info("queried spot requests without an error, but no spot requests are in the list")
 					// Spot instance request may not appear instantly, we will try again later
 					return hourlyCost, ErrRequestRequeue
 				}
 			} else {
+				log.V(2).Info("instance has no spot request, treating as an on-demand")
 				// If instance is on-demand - get the price for instance type in the region
 				var priceResult *pricing.GetProductsOutput
 				region := (*instance.Placement.AvailabilityZone)[:len(*instance.Placement.AvailabilityZone)-1]
+				log.V(2).Info("instance region", "region", region)
 				pricingInput := &pricing.GetProductsInput{
 					ServiceCode: ptr.To("AmazonEC2"),
 					Filters: []pricingTypes.Filter{
@@ -116,6 +121,14 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 						},
 					},
 				}
+				// Verbose filters log
+				var labels []any
+				for _, filter := range pricingInput.Filters {
+					labels = append(labels, *filter.Field, *filter.Value)
+				}
+				log.V(2).Info("pricing request input filters", labels...)
+
+				// Querying pricing API
 				if priceResult, err = clientPricing.GetProducts(ctx, pricingInput); err != nil {
 					log.V(1).Error(err, "failed to get instance pricing")
 					return
@@ -143,7 +156,7 @@ func GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, node *corev1
 								log.V(1).Error(err, msg)
 								return
 							}
-							log.V(1).Info(fmt.Sprintf("On-demand instance price: %s", priceStr))
+							log.V(1).Info(fmt.Sprintf("on-demand instance price: %s", priceStr))
 							r.Eventf(node, corev1.EventTypeNormal, "HourlyCost", priceStr)
 							break
 						}

@@ -11,7 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func getInstanceID(ctx context.Context, r record.EventRecorder, node *corev1.Node) (id string, err error) {
+func (*Provider) getInstanceID(ctx context.Context, r record.EventRecorder, node *corev1.Node) (id string, err error) {
 	log := logf.FromContext(ctx)
 	// Getting instance ID
 	var rx *regexp.Regexp

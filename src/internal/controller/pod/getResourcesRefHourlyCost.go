@@ -9,20 +9,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// GetResourcesRefHourlyCost calculates the hourly cost per CPU core and memory MiB for a node
 func GetResourcesRefHourlyCost(
 	ctx context.Context, c client.Client, r record.EventRecorder,
 	pod *corev1.Pod, node *corev1.Node, nodeHourlyCost float64) (cpuCoreCost float64, memoryMiBCost float64, err error) {
 
+	// Define base resource units
 	cpuCore := resource.MustParse("1.0")
-	memoryMiB := resource.MustParse("1Mi")
+	memoryGiB := resource.MustParse("1Gi")
 	cpuCoreFloat := cpuCore.AsApproximateFloat64()
-	memoryMiBFloat := memoryMiB.AsApproximateFloat64()
+	memoryGiBFloat := memoryGiB.AsApproximateFloat64()
 
+	// Get node's allocatable resources
 	allocatableCPU := node.Status.Allocatable.Cpu().AsApproximateFloat64()
 	allocatableMemory := node.Status.Allocatable.Memory().AsApproximateFloat64()
 
-	cpuCoreCost = cpuCoreFloat * (nodeHourlyCost / 2) / allocatableCPU
-	memoryMiBCost = memoryMiBFloat * (nodeHourlyCost / 2) / allocatableMemory
+	// Calculate total resource units and cost per unit
+	// We sum count of Cores and GiBs and divide hourly cost on that value
+	// So for example you have 2.0/8Gi, so there is 2 cores + 8 Gi = 10 units
+	// Hourly price is 0.035, so 1 core == 1 Gi == 0.0035
+	unitsCount := allocatableCPU/cpuCoreFloat + allocatableMemory/memoryGiBFloat
+	unitHourlyCost := nodeHourlyCost / unitsCount
+
+	// Set costs per resource type
+	cpuCoreCost = unitHourlyCost
+	memoryMiBCost = unitHourlyCost / 1024 // Convert from GiB to MiB
 
 	return
 }

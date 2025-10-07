@@ -19,12 +19,10 @@ package controller
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	. "github.com/vlasov-y/moneypod/internal/controller/node"
-	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
-	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
+	"github.com/vlasov-y/moneypod/internal/controller/providers"
 	. "github.com/vlasov-y/moneypod/internal/types"
 	. "github.com/vlasov-y/moneypod/internal/utils"
 
@@ -92,22 +90,13 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 	// First time - get full node info
 	var info NodeInfo
-	if strings.HasPrefix(node.Spec.ProviderID, "aws://") {
-		if info, err = aws.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
-			if CheckRequeue(err) {
-				err = nil
-				return RequeueResult, err
-			}
-			return
+	provider := providers.NewProvider(&node)
+	if info, err = provider.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
+		if CheckRequeue(err) {
+			err = nil
+			return RequeueResult, err
 		}
-	} else {
-		if info, err = manual.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
-			if CheckRequeue(err) {
-				err = nil
-				return RequeueResult, err
-			}
-			return
-		}
+		return
 	}
 	// And create metrics
 	createNodeMetrics(&node, hourlyCost, &info)

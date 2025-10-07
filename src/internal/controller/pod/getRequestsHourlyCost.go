@@ -28,9 +28,22 @@ func GetRequestsHourlyCost(
 		}
 	}
 
+	// Get reference cost
+	var cpuCoreCost, memoryMiBCost float64
+	cpuCoreCost, memoryMiBCost, err = GetResourcesRefHourlyCost(ctx, c, r, pod, node, nodeHourlyCost)
+	if err != nil {
+		return
+	}
+
+	// Define base resource units
+	cpuCore := resource.MustParse("1.0")
+	memoryMiB := resource.MustParse("1Mi")
+	cpuCoreFloat := cpuCore.AsApproximateFloat64()
+	memoryMiBFloat := memoryMiB.AsApproximateFloat64()
+
 	// Calculate resources requests cost
-	cpuCost := allocatedCPU.AsApproximateFloat64() / node.Status.Allocatable.Cpu().AsApproximateFloat64() * (nodeHourlyCost / 2)
-	memoryCost := allocatedMemory.AsApproximateFloat64() / node.Status.Allocatable.Memory().AsApproximateFloat64() * (nodeHourlyCost / 2)
+	cpuCost := allocatedCPU.AsApproximateFloat64() / cpuCoreFloat * cpuCoreCost
+	memoryCost := allocatedMemory.AsApproximateFloat64() / memoryMiBFloat * memoryMiBCost
 	hourlyCost = cpuCost + memoryCost
 	log.V(2).Info("pod requests hourly cost", "cpu", cpuCost, "memory", memoryCost, "sum", hourlyCost)
 
