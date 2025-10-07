@@ -4,6 +4,22 @@ resources:
   - ../manager
 patches:
   - target:
+      kind: Deployment
+      name: moneypod-app
+    patch: |-
+      - op: test
+        path: /spec/template/spec/containers/0/args/4
+        value: --zap-devel=false
+      - op: replace
+        path: /spec/template/spec/containers/0/args/4
+        value: --zap-devel=true
+      - op: test
+        path: /spec/template/spec/containers/0/args/5
+        value: --zap-log-level=info
+      - op: replace
+        path: /spec/template/spec/containers/0/args/5
+        value: --zap-log-level=3
+  - target:
       kind: Service
       name: moneypod-metrics
     patch: |-

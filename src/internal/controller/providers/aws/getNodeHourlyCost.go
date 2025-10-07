@@ -30,7 +30,7 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 	// Authorize AWS
 	var awsConfig aws.Config
 	if awsConfig, err = config.LoadDefaultConfig(ctx); err != nil {
-		log.V(1).Error(err, "failed to load AWS config")
+		log.Error(err, "failed to load AWS config")
 		return
 	}
 	clientEc2 := ec2.NewFromConfig(awsConfig)
@@ -43,7 +43,7 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 	if describe, err = clientEc2.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	}); err != nil {
-		log.V(1).Error(err, "failed to describe the instance")
+		log.Error(err, "failed to describe the instance")
 		r.Eventf(node, corev1.EventTypeWarning, "DescribeEC2InstanceFailed", err.Error())
 		return
 	}
@@ -53,39 +53,39 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 		for _, instance := range reservation.Instances {
 			// If instance is spot - get spot reservation price
 			if instance.SpotInstanceRequestId != nil {
-				log.V(2).Info("instance has a spot request")
+				log.V(1).Info("instance has a spot request")
 				// Get spot price from spot instance request
 				var spotResult *ec2.DescribeSpotInstanceRequestsOutput
 				if spotResult, err = clientEc2.DescribeSpotInstanceRequests(ctx, &ec2.DescribeSpotInstanceRequestsInput{
 					SpotInstanceRequestIds: []string{*instance.SpotInstanceRequestId},
 				}); err != nil {
-					log.V(1).Error(err, "failed to describe spot instance request")
+					log.Error(err, "failed to describe spot instance request")
 					r.Eventf(node, corev1.EventTypeWarning, "DescribeSpotRequestFailed", err.Error())
 					return
 				}
 
 				if len(spotResult.SpotInstanceRequests) > 0 {
 					spotPrice := spotResult.SpotInstanceRequests[0].SpotPrice
-					log.V(2).Info("spot price is defined", "price", spotPrice)
+					log.V(1).Info("spot price is defined", "price", spotPrice)
 					// Convert hourly cost to float
 					if hourlyCost, err = strconv.ParseFloat(*spotPrice, 64); err != nil {
 						msg := fmt.Sprintf("failed to parse the spot price: %s", *spotPrice)
-						log.V(1).Error(err, msg)
+						log.Error(err, msg)
 						return
 					}
-					log.V(1).Info(fmt.Sprintf("spot instance price: %s", *spotPrice))
+					log.Info(fmt.Sprintf("spot instance price: %s", *spotPrice))
 					r.Eventf(node, corev1.EventTypeNormal, "HourlyCost", *spotPrice)
 				} else {
-					log.V(2).Info("queried spot requests without an error, but no spot requests are in the list")
+					log.V(1).Info("queried spot requests without an error, but no spot requests are in the list")
 					// Spot instance request may not appear instantly, we will try again later
 					return hourlyCost, ErrRequestRequeue
 				}
 			} else {
-				log.V(2).Info("instance has no spot request, treating as an on-demand")
+				log.V(1).Info("instance has no spot request, treating as an on-demand")
 				// If instance is on-demand - get the price for instance type in the region
 				var priceResult *pricing.GetProductsOutput
 				region := (*instance.Placement.AvailabilityZone)[:len(*instance.Placement.AvailabilityZone)-1]
-				log.V(2).Info("instance region", "region", region)
+				log.V(1).Info("instance region", "region", region)
 				pricingInput := &pricing.GetProductsInput{
 					ServiceCode: ptr.To("AmazonEC2"),
 					Filters: []pricingTypes.Filter{
@@ -126,18 +126,19 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 				for _, filter := range pricingInput.Filters {
 					labels = append(labels, *filter.Field, *filter.Value)
 				}
-				log.V(2).Info("pricing request input filters", labels...)
+				log.V(1).Info("pricing request input filters", labels...)
 
 				// Querying pricing API
 				if priceResult, err = clientPricing.GetProducts(ctx, pricingInput); err != nil {
-					log.V(1).Error(err, "failed to get instance pricing")
+					log.Error(err, "failed to get instance pricing")
 					return
 				}
 
 				if len(priceResult.PriceList) > 0 {
+					log.V(1).Info("pricing list", "list", priceResult.PriceList[0])
 					var priceData map[string]interface{}
 					if err = json.Unmarshal([]byte(priceResult.PriceList[0]), &priceData); err != nil {
-						log.V(1).Error(err, "failed to parse pricing JSON")
+						log.Error(err, "failed to parse pricing JSON")
 						return
 					}
 
@@ -153,10 +154,10 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 
 							if hourlyCost, err = strconv.ParseFloat(priceStr, 64); err != nil {
 								msg := fmt.Sprintf("failed to parse the on-demand price: %s", priceStr)
-								log.V(1).Error(err, msg)
+								log.Error(err, msg)
 								return
 							}
-							log.V(1).Info(fmt.Sprintf("on-demand instance price: %s", priceStr))
+							log.Info(fmt.Sprintf("on-demand instance price: %s", priceStr))
 							r.Eventf(node, corev1.EventTypeNormal, "HourlyCost", priceStr)
 							break
 						}
@@ -164,7 +165,7 @@ func (provider *Provider) GetNodeHourlyCost(ctx context.Context, r record.EventR
 					}
 				} else {
 					msg := "no pricing data found"
-					log.V(1).Info(msg, "instanceType", string(instance.InstanceType))
+					log.Info(msg, "instanceType", string(instance.InstanceType))
 					return hourlyCost, ErrRequestRequeue
 				}
 			}

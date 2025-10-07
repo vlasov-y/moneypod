@@ -45,7 +45,7 @@ func GetRequestsHourlyCost(
 	cpuCost := allocatedCPU.AsApproximateFloat64() / cpuCoreFloat * cpuCoreCost
 	memoryCost := allocatedMemory.AsApproximateFloat64() / memoryMiBFloat * memoryMiBCost
 	hourlyCost = cpuCost + memoryCost
-	log.V(2).Info("pod requests hourly cost", "cpu", cpuCost, "memory", memoryCost, "sum", hourlyCost)
+	log.V(1).Info("pod requests hourly cost", "cpu", cpuCost, "memory", memoryCost, "sum", hourlyCost)
 
 	return
 }

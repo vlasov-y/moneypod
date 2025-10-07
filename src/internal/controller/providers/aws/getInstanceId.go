@@ -16,11 +16,11 @@ func (*Provider) getInstanceID(ctx context.Context, r record.EventRecorder, node
 	// Getting instance ID
 	var rx *regexp.Regexp
 	if rx, err = regexp.Compile(`^aws:///[a-z0-9-]+/i-\w+$`); err != nil {
-		log.V(1).Error(err, "regexp compile error")
+		log.Error(err, "regexp compile error")
 		return
 	}
 	if !rx.MatchString(node.Spec.ProviderID) {
-		log.V(1).Error(err, "failed to match node provider id")
+		log.Error(err, "failed to match node provider id")
 		r.Eventf(node, corev1.EventTypeWarning, "UnknownProviderID", ".spec.providerId does not match %s", r)
 		return
 	}

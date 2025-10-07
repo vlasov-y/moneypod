@@ -56,7 +56,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	if err = r.Get(ctx, req.NamespacedName, &pod); err != nil {
 		// Object does not exist, ignore the event and return
 		if !errors.IsNotFound(err) {
-			log.V(1).Error(err, "cannot get the pod")
+			log.Error(err, "cannot get the pod")
 		}
 		return result, client.IgnoreNotFound(err)
 	}
@@ -78,7 +78,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	if err = r.Get(ctx, types.NamespacedName{Name: pod.Spec.NodeName}, &node); err != nil {
 		// Object does not exist, ignore the event and return
 		if !errors.IsNotFound(err) {
-			log.V(1).Error(err, "cannot get the node")
+			log.Error(err, "cannot get the node")
 		}
 		return result, client.IgnoreNotFound(err)
 	}
@@ -129,7 +129,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 			if err = r.Get(ctx, types.NamespacedName{Namespace: pod.Namespace, Name: ownerRef.Name}, &replicaset); err != nil {
 				// Object does not exist, ignore the event and return
 				if !errors.IsNotFound(err) {
-					log.V(1).Error(err, "cannot get the replicaset")
+					log.Error(err, "cannot get the replicaset")
 				}
 				return result, client.IgnoreNotFound(err)
 			}

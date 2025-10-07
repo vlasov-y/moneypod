@@ -86,8 +86,10 @@ tasks:
     desc: Install operator
     deps: [install-crds]
     cmds:
+      - task: docker:build-and-load
       - "{{ .bin.kubectl }} apply --wait -k {{ squote .manifestPath.root }}"
       - "{{ .bin.kubectl }} -n {{ squote .name }} wait --for=condition=Available deployments --all --timeout=5m"
+      - "{{ .bin.kubectl }} -n {{ squote .name }} wait --for=condition=Ready pods --all --timeout=5m"
 
   uninstall-crds:
     desc: Uninstall operator CRDs

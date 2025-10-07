@@ -51,7 +51,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		// Object does not exist, ignore the event and return
 		if !errors.IsNotFound(err) {
 			msg := "cannot get the node"
-			log.V(1).Error(err, msg)
+			log.Error(err, msg)
 		}
 		return result, client.IgnoreNotFound(err)
 	}
@@ -67,7 +67,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	for _, c := range node.Status.Conditions {
 		if c.Type == corev1.NodeReady {
 			if c.Status != corev1.ConditionTrue {
-				log.V(2).Info("node is not yet ready")
+				log.V(1).Info("node is not yet ready")
 				return RequeueResult, err
 			}
 			break

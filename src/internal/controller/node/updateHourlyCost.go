@@ -36,7 +36,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 
 		// Add respective annotation
 		if hourlyCost > 0 {
-			log.V(2).Info("hourly cost is greater than zero", "hourlyCost", hourlyCost)
+			log.V(1).Info("hourly cost is greater than zero", "hourlyCost", hourlyCost)
 			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 7, 64)
 		} else {
 			annotations[AnnotationNodeHourlyCost] = UnknownCost
@@ -46,10 +46,10 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 		if err = c.Update(ctx, node); err != nil {
 			if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
 				err = nil
-				log.V(2).Info("requeue because of the update conflict")
+				log.V(1).Info("requeue because of the update conflict")
 				return hourlyCost, ErrRequestRequeue
 			}
-			log.V(1).Error(err, "failed to update the node object")
+			log.Error(err, "failed to update the node object")
 			r.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
 			return
 		}
@@ -61,7 +61,7 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 		// ...if it is defined
 		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil {
 			msg := fmt.Sprintf("failed to parse the price: %s", annotations[AnnotationNodeHourlyCost])
-			log.V(1).Error(err, msg)
+			log.Error(err, msg)
 			// If price is broken - delete the annotation
 			newAnnotations := map[string]string{}
 			for k, v := range annotations {
@@ -74,10 +74,10 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 			if err = c.Update(ctx, node); err != nil {
 				if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
 					err = nil
-					log.V(2).Info("requeue because of the update conflict")
+					log.V(1).Info("requeue because of the update conflict")
 					return hourlyCost, ErrRequestRequeue
 				}
-				log.V(1).Error(err, "failed to update the node object")
+				log.Error(err, "failed to update the node object")
 				r.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
 				return
 			}

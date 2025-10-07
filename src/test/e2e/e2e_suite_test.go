@@ -41,11 +41,6 @@ var _ = BeforeSuite(func() {
 	cmd := exec.Command("task", "kind:bootstrap")
 	err := run(cmd)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred(), "Failed to create the kind cluster")
-
-	By("building and loading docker image to the cluster")
-	cmd = exec.Command("task", "docker:build-and-load")
-	err = run(cmd)
-	ExpectWithOffset(1, err).ToNot(HaveOccurred(), "Failed to build and load the image")
 })
 
 // run will execute command and grab its output

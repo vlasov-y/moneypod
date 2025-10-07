@@ -25,7 +25,7 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 	// Authorize AWS
 	var awsConfig aws.Config
 	if awsConfig, err = config.LoadDefaultConfig(ctx); err != nil {
-		log.V(1).Error(err, "failed to load AWS config")
+		log.Error(err, "failed to load AWS config")
 		return
 	}
 	clientEc2 := ec2.NewFromConfig(awsConfig)
@@ -35,7 +35,7 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 	if describe, err = clientEc2.DescribeInstances(ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},
 	}); err != nil {
-		log.V(1).Error(err, "failed to describe the instance")
+		log.Error(err, "failed to describe the instance")
 		r.Eventf(node, corev1.EventTypeWarning, "DescribeEC2InstanceFailed", err.Error())
 		return
 	}

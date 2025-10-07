@@ -36,7 +36,7 @@ func GetNodeHourlyCost(ctx context.Context, c client.Client, r record.EventRecor
 	}
 
 	if hourlyCost, err = strconv.ParseFloat(nodeHourlyCostStr, 64); err != nil {
-		log.V(1).Error(err, "failed to parse node's hourly cost", "nodeHourlyCost", nodeHourlyCostStr)
+		log.Error(err, "failed to parse node's hourly cost", "nodeHourlyCost", nodeHourlyCostStr)
 		return
 	}
 
