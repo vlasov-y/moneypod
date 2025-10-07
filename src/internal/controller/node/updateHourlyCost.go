@@ -33,11 +33,12 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 			}
 			return
 		}
-
+		// Rounding cost to 10 chars before comparing with 0
+		hourlyCost, _ = strconv.ParseFloat(strconv.FormatFloat(hourlyCost, 'f', 10, 64), 64)
 		// Add respective annotation
 		if hourlyCost > 0 {
 			log.V(1).Info("hourly cost is greater than zero", "hourlyCost", hourlyCost)
-			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 7, 64)
+			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 10, 64)
 		} else {
 			annotations[AnnotationNodeHourlyCost] = UnknownCost
 		}
@@ -59,8 +60,11 @@ func UpdateHourlyCost(ctx context.Context, c client.Client, r record.EventRecord
 		hourlyCost = -1
 	} else {
 		// ...if it is defined
-		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil {
-			msg := fmt.Sprintf("failed to parse the price: %s", annotations[AnnotationNodeHourlyCost])
+		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil || hourlyCost == 0 {
+			msg := fmt.Sprintf("failed to parse the cost: %s", annotations[AnnotationNodeHourlyCost])
+			if hourlyCost == 0 {
+				msg = "node hourly cost has been set to 0 so reevaluation is required"
+			}
 			log.Error(err, msg)
 			// If price is broken - delete the annotation
 			newAnnotations := map[string]string{}
