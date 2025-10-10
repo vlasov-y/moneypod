@@ -29,6 +29,7 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 	if annotations == nil {
 		annotations = map[string]string{}
 	}
+	info.ID = "manual"
 
 	// Get node's capacity from labels/annotations
 	if info.Capacity, exists = annotations[AnnotationNodeCapacity]; !exists {
@@ -37,6 +38,10 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 	}
 	if info.Capacity, err = provider.parseAnnotationLabelSelector(node, info.Capacity); err != nil {
 		r.Eventf(node, corev1.EventTypeWarning, "CapacityGetError", err.Error())
+		return
+	}
+	if info.Capacity == "" {
+		r.Eventf(node, corev1.EventTypeWarning, "EmptyCapacity", fmt.Sprintf("%s is an empty string", AnnotationNodeCapacity))
 		return
 	}
 
@@ -49,6 +54,10 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 		r.Eventf(node, corev1.EventTypeWarning, "TypeGetError", err.Error())
 		return
 	}
+	if info.Type == "" {
+		r.Eventf(node, corev1.EventTypeWarning, "EmptyType", fmt.Sprintf("%s is an empty string", AnnotationNodeType))
+		return
+	}
 
 	// Get node's availability zone from labels/annotations
 	if info.AvailabilityZone, exists = annotations[AnnotationNodeAvailabilityZone]; !exists {
@@ -57,6 +66,10 @@ func (provider *Provider) GetNodeInfo(ctx context.Context, r record.EventRecorde
 	}
 	if info.AvailabilityZone, err = provider.parseAnnotationLabelSelector(node, info.AvailabilityZone); err != nil {
 		r.Eventf(node, corev1.EventTypeWarning, "AvailabilityZoneGetError", err.Error())
+		return
+	}
+	if info.AvailabilityZone == "" {
+		r.Eventf(node, corev1.EventTypeWarning, "EmptyAvailabilityZone", fmt.Sprintf("%s is an empty string", AnnotationNodeAvailabilityZone))
 		return
 	}
 

@@ -46,7 +46,7 @@ func (*Provider) parseAnnotationLabelSelector(node *corev1.Node, value string) (
 
 	// Try find referenced label or annotation
 	var exists bool
-	if value, exists = m[selector]; !exists {
+	if result, exists = m[selector]; !exists {
 		return value, fmt.Errorf("could not find %s %s", selectorType, selector)
 	}
 	return
