@@ -124,3 +124,15 @@ tasks:
     cmds:
       - '{{ .bin.lint }} config verify --config {{ print .ROOT_DIR "/.golangci.yml" | quote }}'
       - "{{ .bin.lint }} run"
+      - silent: true
+        cmd: |-
+          error=false
+          find . -type f \( -name "*.go" -or -name "taskfile*" \) |
+          while IFS= read -r file; do
+            if ! head -1 "$file" | grep -qF 'Copyright 2025 The MoneyPod Authors' - || \
+               ! head -7 "$file" | tail -1 | grep -qF 'http://www.apache.org/licenses/LICENSE-2.0' -; then
+              echo "error: failed to validate the license header for $file" 1>&2
+              error=true
+            fi
+          done
+          if [ "$error" = "true" ]; then exit 1; fi

@@ -48,7 +48,7 @@ repos:
         args:
           - -c
           - >-
-            find . -type f -name "*.go" -or -name "taskfile*" -print0 |
+            find . -type f \( -name "*.go" -or -name "taskfile*" \) -print0 |
             xargs -0 addlicense -c 'The MoneyPod Authors' -l apache -v
   - repo: local
     hooks:
