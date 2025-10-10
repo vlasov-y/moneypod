@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - src/**/*
+      - .github/workflows/test-e2e.yaml
   pull_request:
 
 jobs:

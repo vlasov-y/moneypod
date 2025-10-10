@@ -6,7 +6,7 @@ on:
       - "**"
     paths:
       - src/**/*
-      - .github/**/*
+      - .github/workflows/image.yaml
     tags:
       - v*
   pull_request:

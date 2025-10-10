@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - src/**/*
+      - .github/workflows/test.yaml
   pull_request:
 
 jobs:
