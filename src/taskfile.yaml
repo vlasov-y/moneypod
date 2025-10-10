@@ -120,7 +120,7 @@ tasks:
 
   lint:
     desc: Go linter
-    deps: [tools:all]
+    deps: [tools:lint]
     cmds:
       - '{{ .bin.lint }} config verify --config {{ print .ROOT_DIR "/.golangci.yml" | quote }}'
       - "{{ .bin.lint }} run"

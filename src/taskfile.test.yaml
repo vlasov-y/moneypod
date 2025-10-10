@@ -27,11 +27,11 @@ includes:
 tasks:
   unit:
     desc: Run unit tests
-    deps: [tools:all, generate:all]
+    deps: [tools:setup-envtest, generate:all]
     cmds:
       - silent: true
         cmd: >-
-          KUBEBUILDER_ASSETS=$({{ squote .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path {{ squote .envtestVersion }})
+          KUBEBUILDER_ASSETS="$(cat {{ print .TASK_TEMP_DIR "/envtest-path" | squote }})"
           go test $(go list ./... | grep -v /e2e) -coverprofile cover.out -v -ginkgo.v
 
   e2e:

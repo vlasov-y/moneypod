@@ -29,24 +29,15 @@ vars:
 tasks:
   all:
     desc: Installs CLI tools to {{ .localBin }}
+    deps: [controller-gen, kustomize, lint, setup-envtest, kind]
+
+  kind:
+    desc: Installs kind to {{ .bin.kind }}
     cmds:
-      - mkdir -p {{ squote .localBin }} {{ squote .TASK_TEMP_DIR }}
-      - task: controller-gen
-      - task: kustomize
-      - "GOBIN={{ squote .localBin }} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{ .versions.lint }}"
-      - "GOBIN={{ squote .localBin }} go install sigs.k8s.io/controller-runtime/tools/setup-envtest@{{ .versions.setupEnvtest }}"
+      - mkdir -p {{ squote .localBin }}
       - "GOBIN={{ squote .localBin }} go install sigs.k8s.io/kind@{{ .versions.kind }}"
-      - >-
-        {{ .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path
-        {{ squote .versions.envtest }} 1>{{ print .TASK_TEMP_DIR "/envtest-path" | squote }}
-      - >-
-        xargs realpath --relative-to={{ squote .localBin }} <{{ print .TASK_TEMP_DIR "/envtest-path" | squote }} |
-        xargs printf "%s/kubectl" | xargs -I{} ln -fs {} {{ print .localBin "/kubectl" | squote }}
     status:
       - "{{ .bin.kind }} version"
-      - "{{ .bin.kubectl }} version --client"
-      - "{{ .bin.lint }} --version"
-      - "{{ .bin.setupEnvtest }} version"
 
   controller-gen:
     desc: Installs controller-gen to {{ .bin.controllerGen }}
@@ -63,6 +54,29 @@ tasks:
       - GOBIN={{ squote .localBin }} go install sigs.k8s.io/kustomize/kustomize/v5@{{ .versions.kustomize }}
     status:
       - "{{ .bin.kustomize }} version"
+
+  setup-envtest:
+    desc: Installs setup-envtest to {{ .bin.setupEnvtest }}
+    cmds:
+      - mkdir -p {{ squote .localBin }}  {{ squote .TASK_TEMP_DIR }}
+      - GOBIN={{ squote .localBin }} go install sigs.k8s.io/controller-runtime/tools/setup-envtest@{{ .versions.setupEnvtest }}
+      - >-
+        {{ .bin.setupEnvtest }} use --bin-dir {{ squote .localBin }} -p path
+        {{ squote .versions.envtest }} 1>{{ print .TASK_TEMP_DIR "/envtest-path" | squote }}
+      - >-
+        xargs realpath --relative-to={{ squote .localBin }} <{{ print .TASK_TEMP_DIR "/envtest-path" | squote }} |
+        xargs printf "%s/kubectl" | xargs -I{} ln -fs {} {{ print .localBin "/kubectl" | squote }}
+    status:
+      - "{{ .bin.kubectl }} version --client"
+      - "{{ .bin.setupEnvtest }} --version"
+
+  lint:
+    desc: Installs golangci-lint to {{ .bin.lint }}
+    cmds:
+      - mkdir -p {{ squote .localBin }}
+      - GOBIN={{ squote .localBin }} go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@{{ .versions.lint }}
+    status:
+      - "{{ .bin.lint }} --version"
 
   clean:
     desc: Remove CLI tools from {{ .localBin }}

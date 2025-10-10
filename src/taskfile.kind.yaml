@@ -24,7 +24,7 @@ includes:
 tasks:
   create:
     desc: Create a KIND cluster
-    deps: [tools:all]
+    deps: [tools:kind]
     cmds:
       - silent: true
         cmd: |-
@@ -40,7 +40,7 @@ tasks:
 
   bootstrap:
     desc: Install flux, cert-manager, prometheus-crds and bootstrap job
-    deps: [create]
+    deps: [create, tools:setup-envtest] # setup-envtest to get .bin.kubectl
     cmds:
       - "{{ .bin.kubectl }} apply --wait -f https://github.com/fluxcd/flux2/releases/latest/download/install.yaml"
       - "{{ .bin.kubectl }} wait -n flux-system --for=condition=Available deployments --all --timeout=5m"
@@ -111,6 +111,6 @@ tasks:
     status:
       - |-
         if [ -f {{ .bin.kind }} ]; then
-          {{ .bin.kind }} get clusters | grep -qF {{ .kind.name }}
+          {{ .bin.kind }} get clusters | grep -qF {{ .kind.name }} && exit 1
         fi
       - test ! -f {{ .kubeconfig }}

@@ -296,37 +296,29 @@ var _ = Describe("Manager", Ordered, func() {
 						labels[label.GetName()] = label.GetValue()
 					}
 
-					By("Check pod and namespace labels exist")
 					Expect(labels).To(HaveKey("pod"), "failed to find a pod label")
 					Expect(labels).To(HaveKey("namespace"), "failed to find a namespace label")
-					byPrefix := fmt.Sprintf("%s/%s", labels["namespace"], labels["pod"])
 
-					By(fmt.Sprintf("%s: Check pod and name labels values are equal", byPrefix))
-					Expect(labels).To(HaveKey("pod"), "failed to find a pod label")
+					By(fmt.Sprintf("%s/%s", labels["namespace"], labels["pod"]))
 					Expect(labels).To(HaveKeyWithValue("name", labels["pod"]), "name label must be equal to pod label")
 
-					By(fmt.Sprintf("%s: Get Pod to compare with", byPrefix))
 					pod := &corev1.Pod{}
 					err = c.Get(context.Background(), client.ObjectKey{Name: labels["pod"], Namespace: labels["namespace"]}, pod)
 					ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Pod mentioned in label")
 
-					By(fmt.Sprintf("%s: Ensure node label matches pod.spec.nodeName", byPrefix))
 					Expect(labels).To(HaveKey("node"), "failed to find a node label")
 					Expect(labels["node"]).To(Equal(pod.Spec.NodeName), "node label does not match pod.spec.nodeName")
 
-					By(fmt.Sprintf("%s: Ensure owner labels are set", byPrefix))
 					Expect(labels).To(HaveKey("owner_kind"), "failed to find a owner_kind label")
 					Expect(labels).To(HaveKey("owner_name"), "failed to find a owner_name label")
 					if labels["owner_kind"] != "" {
 						Expect(pod.GetOwnerReferences()).ToNot(BeEmpty(), "label has owner set, but pod does not have an owner")
 						if labels["owner_kind"] == "Deployment" {
-							By(fmt.Sprintf("%s: Ensure Deployment owner exists", byPrefix))
 							deployment := &appsv1.Deployment{}
 							err = c.Get(context.Background(),
 								client.ObjectKey{Name: labels["owner_name"], Namespace: labels["namespace"]}, deployment)
 							ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get Deployment mentioned in owner labels")
 						} else {
-							By(fmt.Sprintf("%s: Ensure not Deployment owner exists", byPrefix))
 							owner := pod.GetOwnerReferences()[0]
 							Expect(labels).To(HaveKeyWithValue("owner_kind", owner.Kind), "failed to find a owner_kind label")
 							Expect(labels).To(HaveKeyWithValue("owner_name", owner.Name), "failed to find a owner_name label")
