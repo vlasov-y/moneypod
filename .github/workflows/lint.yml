@@ -19,6 +19,9 @@ jobs:
 
       - name: Run linter
         uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: src
 
       - name: Install Task
         uses: go-task/setup-task@v1
