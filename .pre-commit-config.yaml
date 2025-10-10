@@ -61,7 +61,7 @@ repos:
         pass_filenames: false
       - id: lint
         name: Go lint
-        entry: task -d src lint
+        entry: task -d src lint lint-license
         language: system
         files: src/.+
         types: [file]

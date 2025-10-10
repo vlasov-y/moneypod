@@ -124,6 +124,10 @@ tasks:
     cmds:
       - '{{ .bin.lint }} config verify --config {{ print .ROOT_DIR "/.golangci.yml" | quote }}'
       - "{{ .bin.lint }} run"
+
+  lint-license:
+    desc: Verify sources have license comment header
+    cmds:
       - silent: true
         cmd: |-
           error=false
