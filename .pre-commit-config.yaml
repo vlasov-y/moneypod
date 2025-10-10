@@ -1,3 +1,17 @@
+# Copyright 2025 The MoneyPod Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #  ┬─┐┬─┐┬─┐  ┌─┐┌─┐┌┌┐┌┌┐o┌┐┐
 #  │─┘│┬┘├─ ──│  │ ││││││││ │
 #  ┘  ┘└┘┴─┘  └─┘┘─┘┘ ┘┘ ┘┘ ┘
@@ -25,6 +39,17 @@ repos:
         id: forbid-submodules
       - name: No mixed line ending
         id: mixed-line-ending
+  - repo: https://github.com/google/addlicense
+    rev: v1.2.0
+    hooks:
+      - name: Add license to sources
+        id: addlicense
+        entry: sh
+        args:
+          - -c
+          - >-
+            find . -type f -name "*.go" -or -name "taskfile*" -print0 |
+            xargs -0 addlicense -c 'The MoneyPod Authors' -l apache -v
   - repo: local
     hooks:
       - id: regenerate-manifests
