@@ -10,6 +10,9 @@
       "request": "launch",
       "mode": "auto",
       "program": "src/cmd/main.go",
+      "env": {
+        "KUBECONFIG": "${workspaceFolder}/src/kubeconfig.yaml",
+      },
       "args": [
         "--metrics-bind-address=:8080",
         "--metrics-secure=false"
@@ -23,6 +26,17 @@
       "program": "${workspaceFolder}/src/test/e2e",
       "env": {},
       "args": ["./test/e2e/", "-v", "-ginkgo.v"],
+      "showLog": true,
+      "buildFlags": ""
+    },
+    {
+      "name": "Debug Go unit test",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/src/internal/controller/providers/manual",
+      "env": {},
+      "args": ["./internal/controller/providers/manual/", "-v", "-ginkgo.v"],
       "showLog": true,
       "buildFlags": ""
     },
