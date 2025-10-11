@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+package pod
 
 import (
 	. "github.com/onsi/ginkgo/v2"
 )
 
-var _ = Describe("Node Controller", func() {
+var _ = Describe("Pod Controller", func() {
 	Context("When reconciling a resource", func() {
 
 		It("should successfully reconcile the resource", func() {

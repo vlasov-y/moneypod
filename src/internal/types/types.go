@@ -16,13 +16,31 @@
 package types
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+)
+
+var (
+	// Condition to set on the Node object signaling cost update
+	ConditionNodeHourlyCost = struct {
+		Type          corev1.NodeConditionType
+		ReasonUpdated string
+		ReasonUnknown string
+	}{
+		Type:          "HourlyCost",
+		ReasonUpdated: ConditionTypePrefix + "CostUpdated",
+		ReasonUnknown: ConditionTypePrefix + "UnknownCost",
+	}
 )
 
 const (
 	annotationDomain = "moneypod.io"
+	// Prefix for all condition types used
+	ConditionTypePrefix = "MoneyPod"
 	// Node hourly cost
 	AnnotationNodeHourlyCost = annotationDomain + "/node-hourly-cost"
 	// Spot or on-demand
@@ -36,10 +54,20 @@ const (
 )
 
 type Reconciler struct {
+	client.Client
 	Config                  *rest.Config
 	Scheme                  *runtime.Scheme
 	Recorder                record.EventRecorder
 	MaxConcurrentReconciles int
+}
+
+func NewReconciler(mgr manager.Manager) (r Reconciler) {
+	return Reconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Config:   mgr.GetConfig(),
+		Recorder: mgr.GetEventRecorderFor("MoneyPod"),
+	}
 }
 
 type NodeCapacity string

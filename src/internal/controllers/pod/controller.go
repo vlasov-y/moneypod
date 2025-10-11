@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controller
+// Package pod provides Kubernetes controller implementations for cost management.
+package pod
 
 import (
 	"context"
+	"time"
 
-	. "github.com/vlasov-y/moneypod/internal/controller/pod"
 	. "github.com/vlasov-y/moneypod/internal/types"
 	. "github.com/vlasov-y/moneypod/internal/utils"
 
@@ -34,7 +35,6 @@ import (
 
 // PodReconciler reconciles a Pod object
 type PodReconciler struct {
-	client.Client
 	Reconciler
 }
 
@@ -85,7 +85,7 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	var info PodInfo
 
 	// Get node's hourly cost
-	if info.NodeHourlyCost, err = GetNodeHourlyCost(ctx, r.Client, r.Recorder, &pod, &node); err != nil {
+	if info.NodeHourlyCost, err = r.getNodeHourlyCost(ctx, &node); err != nil {
 		if CheckRequeue(err) {
 			err = nil
 			return RequeueResult, err
@@ -98,23 +98,10 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 	}
 
 	// Calculate minimum pod hourly cost basing on resources requests
-	if info.PodRequestsHourlyCost, err = GetRequestsHourlyCost(ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
-		if CheckRequeue(err) {
-			err = nil
-			return RequeueResult, err
-		}
-		return
-	}
+	info.PodRequestsHourlyCost = r.getRequestsHourlyCost(ctx, &pod, &node, info.NodeHourlyCost)
 
 	// Calculate node's reference costs
-	if info.NodeCPUCoreHourlyCost, info.NodeMemoryMiBHourlyCost, err = GetResourcesRefHourlyCost(
-		ctx, r.Client, r.Recorder, &pod, &node, info.NodeHourlyCost); err != nil {
-		if CheckRequeue(err) {
-			err = nil
-			return RequeueResult, err
-		}
-		return
-	}
+	info.NodeCPUCoreHourlyCost, info.NodeMemoryMiBHourlyCost = r.getResourcesRefHourlyCost(&node, info.NodeHourlyCost)
 
 	// Get owner
 	if len(pod.GetOwnerReferences()) > 0 {
@@ -169,20 +156,28 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 				node := obj.(*corev1.Node)
 				var requests []reconcile.Request
-				// List Pods on this node
-				var pods corev1.PodList
-				if err := r.Client.List(ctx, &pods, client.MatchingFields{".spec.nodeName": node.Name}); err != nil {
-					return nil
+				// Reconcile only Pods on the Nodes that had their price updated recently
+				for _, c := range node.Status.Conditions {
+					if c.Type == ConditionNodeHourlyCost.Type &&
+						time.Since(c.LastHeartbeatTime.Time).Seconds() < 10 {
+						// List Pods on this node
+						var pods corev1.PodList
+						if err := r.Client.List(ctx, &pods, client.MatchingFields{".spec.nodeName": node.Name}); err != nil {
+							return nil
+						}
+						// Prepare reconciliation requests
+						for _, pod := range pods.Items {
+							requests = append(requests, reconcile.Request{
+								NamespacedName: types.NamespacedName{
+									Namespace: pod.Namespace,
+									Name:      pod.Name,
+								},
+							})
+						}
+						break
+					}
 				}
-				// Prepare reconciliation requests
-				for _, pod := range pods.Items {
-					requests = append(requests, reconcile.Request{
-						NamespacedName: types.NamespacedName{
-							Namespace: pod.Namespace,
-							Name:      pod.Name,
-						},
-					})
-				}
+
 				return requests
 			}),
 		).

@@ -22,8 +22,8 @@ import (
 )
 
 var _ = Describe("GetNodeInfo", Ordered, func() {
-	var provider Provider
 	var node *corev1.Node
+
 	var resetNode = func() {
 		node = NewFakeNode()
 		node.SetAnnotations(map[string]string{
@@ -33,10 +33,6 @@ var _ = Describe("GetNodeInfo", Ordered, func() {
 			"key": "value",
 		})
 	}
-
-	BeforeAll(func() {
-		provider = Provider{}
-	})
 
 	BeforeEach(func() {
 		resetNode()

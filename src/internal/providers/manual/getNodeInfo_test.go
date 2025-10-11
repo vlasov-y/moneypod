@@ -15,7 +15,6 @@
 package manual
 
 import (
-	"context"
 	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -23,14 +22,11 @@ import (
 
 	. "github.com/vlasov-y/moneypod/internal/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/tools/record"
 )
 
 var _ = Describe("GetNodeInfo", Ordered, func() {
-	var provider Provider
-	var recorder *record.FakeRecorder
 	var node *corev1.Node
-	var ctx context.Context
+
 	var resetNode = func() {
 		node = NewFakeNode()
 		node.SetAnnotations(map[string]string{
@@ -44,13 +40,7 @@ var _ = Describe("GetNodeInfo", Ordered, func() {
 		})
 	}
 
-	BeforeAll(func() {
-		provider = Provider{}
-		ctx = context.Background()
-	})
-
 	BeforeEach(func() {
-		recorder = record.NewFakeRecorder(1)
 		resetNode()
 	})
 

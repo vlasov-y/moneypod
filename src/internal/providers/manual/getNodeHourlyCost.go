@@ -37,7 +37,7 @@ func (*Provider) GetNodeHourlyCost(ctx context.Context, r record.EventRecorder, 
 	var hourlyCostStr string
 	var exists bool
 	if hourlyCostStr, exists = annotations[AnnotationNodeHourlyCost]; !exists {
-		r.Eventf(node, corev1.EventTypeWarning, "NoHourlyCost", "no provider for node provider implemented and no manual hourly cost set")
+		r.Eventf(node, corev1.EventTypeWarning, "NoHourlyCost", "no provider for this .spec.providerID implemented and no manual hourly cost set")
 		hourlyCost = -1
 		return
 	}

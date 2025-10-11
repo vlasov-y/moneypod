@@ -19,8 +19,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/vlasov-y/moneypod/internal/controller/providers/aws"
-	"github.com/vlasov-y/moneypod/internal/controller/providers/manual"
+	"github.com/vlasov-y/moneypod/internal/providers/aws"
+	"github.com/vlasov-y/moneypod/internal/providers/manual"
 	"github.com/vlasov-y/moneypod/internal/types"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/record"

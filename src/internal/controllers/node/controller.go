@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package controller provides Kubernetes controller implementations for cost management.
-package controller
+// Package node provides Kubernetes controller implementations for cost management.
+package node
 
 import (
 	"context"
 	"time"
 
-	. "github.com/vlasov-y/moneypod/internal/controller/node"
-	"github.com/vlasov-y/moneypod/internal/controller/providers"
+	. "github.com/vlasov-y/moneypod/internal/providers"
 	. "github.com/vlasov-y/moneypod/internal/types"
 	. "github.com/vlasov-y/moneypod/internal/utils"
 
@@ -33,7 +32,6 @@ import (
 
 // NodeReconciler reconciles a Node object
 type NodeReconciler struct {
-	client.Client
 	Reconciler
 }
 
@@ -74,7 +72,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 	// Manage hourly cost
 	var hourlyCost float64
-	if hourlyCost, err = UpdateHourlyCost(ctx, r.Client, r.Recorder, &node); err != nil {
+	if hourlyCost, err = r.updateHourlyCost(ctx, &node); err != nil {
 		if CheckRequeue(err) {
 			err = nil
 			return RequeueResult, err
@@ -88,7 +86,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 	// First time - get full node info
 	var info NodeInfo
-	provider := providers.NewProvider(&node)
+	provider := NewProvider(&node)
 	if info, err = provider.GetNodeInfo(ctx, r.Recorder, &node); err != nil {
 		if CheckRequeue(err) {
 			err = nil

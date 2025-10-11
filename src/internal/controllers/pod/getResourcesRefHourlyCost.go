@@ -15,18 +15,13 @@
 package pod
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GetResourcesRefHourlyCost calculates the hourly cost per CPU core and memory MiB for a node
-func GetResourcesRefHourlyCost(
-	ctx context.Context, c client.Client, r record.EventRecorder,
-	pod *corev1.Pod, node *corev1.Node, nodeHourlyCost float64) (cpuCoreCost float64, memoryMiBCost float64, err error) {
+// getResourcesRefHourlyCost calculates the hourly cost per CPU core and memory MiB for a node
+func (r *PodReconciler) getResourcesRefHourlyCost(node *corev1.Node,
+	nodeHourlyCost float64) (cpuCoreCost float64, memoryMiBCost float64) {
 
 	// Define base resource units
 	cpuCore := resource.MustParse("1.0")

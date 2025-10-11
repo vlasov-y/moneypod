@@ -28,5 +28,5 @@ var RequeueResult = ctrl.Result{RequeueAfter: 10 * time.Second}
 var ErrRequestRequeue = errors.New("requeue")
 
 func CheckRequeue(err error) (toRequeue bool) {
-	return err.Error() == "requeue"
+	return err != nil && err.Error() == "requeue"
 }

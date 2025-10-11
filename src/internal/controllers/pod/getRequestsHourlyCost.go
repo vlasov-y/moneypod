@@ -19,14 +19,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func GetRequestsHourlyCost(
-	ctx context.Context, c client.Client, r record.EventRecorder,
-	pod *corev1.Pod, node *corev1.Node, nodeHourlyCost float64) (hourlyCost float64, err error) {
+func (r *PodReconciler) getRequestsHourlyCost(ctx context.Context, pod *corev1.Pod,
+	node *corev1.Node, nodeHourlyCost float64) (hourlyCost float64) {
 	log := logf.FromContext(ctx)
 
 	allocatedCPU := resource.Quantity{}
@@ -43,11 +40,7 @@ func GetRequestsHourlyCost(
 	}
 
 	// Get reference cost
-	var cpuCoreCost, memoryMiBCost float64
-	cpuCoreCost, memoryMiBCost, err = GetResourcesRefHourlyCost(ctx, c, r, pod, node, nodeHourlyCost)
-	if err != nil {
-		return
-	}
+	cpuCoreCost, memoryMiBCost := r.getResourcesRefHourlyCost(node, nodeHourlyCost)
 
 	// Define base resource units
 	cpuCore := resource.MustParse("1.0")

@@ -15,6 +15,7 @@
 package manual
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -23,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/record"
 )
 
 func TestE2E(t *testing.T) {
@@ -30,12 +32,25 @@ func TestE2E(t *testing.T) {
 	RunSpecs(t, "Provider manual")
 }
 
-var scheme *runtime.Scheme
-var err error
+var (
+	scheme   *runtime.Scheme
+	err      error
+	ctx      context.Context
+	cancel   context.CancelFunc
+	provider Provider
+	recorder *record.FakeRecorder
+)
 
 var _ = BeforeSuite(func() {
 	scheme = runtime.NewScheme()
 	corev1.AddToScheme(scheme)
+	ctx, cancel = context.WithCancel(context.Background())
+	recorder = record.NewFakeRecorder(1)
+	provider = Provider{}
+})
+
+var _ = AfterSuite(func() {
+	cancel()
 })
 
 // NewFakeNode creates a Node with a GVK and name only, no other fields
