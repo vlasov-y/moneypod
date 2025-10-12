@@ -31,3 +31,8 @@ jobs:
       - name: Running Test
         run: task test:unit
         working-directory: src
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          file: src/cover.out
