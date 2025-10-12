@@ -33,6 +33,7 @@ import (
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/test/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -96,12 +97,12 @@ var _ = Describe("Manager", Ordered, func() {
 	BeforeAll(func() {
 		By("Installing operator to the cluster")
 		cmd = exec.Command("task", "install-operator")
-		err = run(cmd)
+		err = Run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to install the operator")
 
 		By("Initializing Kubernetes clients")
 		var cwd string
-		cwd, err = getProjectDir()
+		cwd, err = GetProjectDir()
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get project dir")
 		rc, err = clientcmd.BuildConfigFromFlags("", path.Join(cwd, "kubeconfig.yaml"))
 		ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to load kubeconfig")
@@ -166,7 +167,7 @@ var _ = Describe("Manager", Ordered, func() {
 	AfterAll(func() {
 		By("Uninstalling the operator")
 		cmd = exec.Command("task", "uninstall-operator")
-		err = run(cmd)
+		err = Run(cmd)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred(), "failed to uninstall the operator")
 	})
 

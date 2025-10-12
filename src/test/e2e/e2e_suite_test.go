@@ -15,14 +15,12 @@
 package e2e
 
 import (
-	"fmt"
-	"os"
 	"os/exec"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/vlasov-y/moneypod/test/utils"
 )
 
 // TestE2E runs the end-to-end (e2e) test suite for the project. These tests execute in an isolated,
@@ -37,37 +35,6 @@ func TestE2E(t *testing.T) {
 var _ = BeforeSuite(func() {
 	By("creating and bootstrapping a kind cluster")
 	cmd := exec.Command("task", "kind:bootstrap")
-	err := run(cmd)
+	err := Run(cmd)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred(), "Failed to create the kind cluster")
 })
-
-// run will execute command and grab its output
-func run(cmd *exec.Cmd) (err error) {
-	dir, _ := getProjectDir()
-	cmd.Dir = dir
-
-	if err = os.Chdir(cmd.Dir); err != nil {
-		fmt.Fprintf(GinkgoWriter, "chdir dir: %q\n", err)
-	}
-
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
-	command := strings.Join(cmd.Args, " ")
-	fmt.Fprintf(GinkgoWriter, "running: %q\n", command)
-	var output []byte
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		fmt.Fprintln(GinkgoWriter, string(output))
-		return fmt.Errorf("%q failed with error: %w", command, err)
-	}
-	return
-}
-
-// getProjectDir will return the directory where the project is
-func getProjectDir() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return wd, fmt.Errorf("failed to get current working directory: %w", err)
-	}
-	wd = strings.ReplaceAll(wd, "/test/e2e", "")
-	return wd, nil
-}

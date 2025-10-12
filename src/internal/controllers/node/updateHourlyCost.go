@@ -47,7 +47,7 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 	}
 	// Update the price only if...
 	if _, annotationExists := annotations[AnnotationNodeHourlyCost]; condition == nil || // 1. Price was never updated
-		time.Now().After(condition.LastHeartbeatTime.Add(time.Hour)) || // 2. It is time to refresh
+		time.Now().After(condition.LastHeartbeatTime.Add(CostRefreshInterval)) || // 2. It is time to refresh
 		condition.Status != corev1.ConditionTrue || // 3. Last refresh was not successful
 		!annotationExists { // 4. No price annotation
 

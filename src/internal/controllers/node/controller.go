@@ -17,7 +17,6 @@ package node
 
 import (
 	"context"
-	"time"
 
 	. "github.com/vlasov-y/moneypod/internal/providers"
 	. "github.com/vlasov-y/moneypod/internal/types"
@@ -98,7 +97,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	createNodeMetrics(&node, hourlyCost, &info)
 
 	// Periodic cost refresh
-	return ctrl.Result{RequeueAfter: time.Hour}, err
+	return ctrl.Result{RequeueAfter: CostRefreshInterval}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

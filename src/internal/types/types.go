@@ -16,6 +16,8 @@
 package types
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -25,6 +27,8 @@ import (
 )
 
 var (
+	// For requeueing the node for cost update
+	CostRefreshInterval = time.Hour
 	// Condition to set on the Node object signaling cost update
 	ConditionNodeHourlyCost = struct {
 		Type          corev1.NodeConditionType

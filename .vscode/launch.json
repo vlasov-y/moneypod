@@ -34,9 +34,9 @@
       "type": "go",
       "request": "launch",
       "mode": "test",
-      "program": "${workspaceFolder}/src/internal/controller/providers/manual",
+      "program": "${workspaceFolder}/src/internal/controllers/node",
       "env": {},
-      "args": ["./internal/controller/providers/manual/", "-v", "-ginkgo.v"],
+      "args": ["./internal/controllers/node/", "-v", "-ginkgo.v"],
       "showLog": true,
       "buildFlags": ""
     },

@@ -25,6 +25,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func TestE2E(t *testing.T) {
@@ -33,19 +35,20 @@ func TestE2E(t *testing.T) {
 }
 
 var (
-	scheme   *runtime.Scheme
-	err      error
-	ctx      context.Context
 	cancel   context.CancelFunc
+	ctx      context.Context
+	err      error
 	provider Provider
 	recorder *record.FakeRecorder
+	scheme   *runtime.Scheme
 )
 
 var _ = BeforeSuite(func() {
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 	scheme = runtime.NewScheme()
 	corev1.AddToScheme(scheme)
-	ctx, cancel = context.WithCancel(context.Background())
 	recorder = record.NewFakeRecorder(1)
+	ctx, cancel = context.WithCancel(context.Background())
 	provider = Provider{}
 })
 
@@ -58,7 +61,7 @@ func NewFakeNode() (node *corev1.Node) {
 	node = &corev1.Node{
 		TypeMeta: metav1.TypeMeta{},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "unit",
+			Name: "test",
 		},
 	}
 
