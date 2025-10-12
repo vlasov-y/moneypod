@@ -15,6 +15,8 @@
 package node
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/vlasov-y/moneypod/internal/types"
@@ -78,6 +80,40 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 			result, err := reconciler.Reconcile(ctx, req)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			ExpectWithOffset(2, result.RequeueAfter).To(Equal(CostRefreshInterval))
+			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+			Expect(node.Annotations).To(HaveKey(AnnotationCostUpdatedAt))
+			_, err = time.Parse(time.RFC3339, node.Annotations[AnnotationCostUpdatedAt])
+			ExpectWithOffset(1, err).ToNot(HaveOccurred())
+		})
+
+		It("should handle updated-at annotation deletion", func() {
+			annotations := map[string]string{}
+			for k, v := range node.Annotations {
+				if k != AnnotationCostUpdatedAt {
+					annotations[k] = v
+				}
+			}
+			node.SetAnnotations(annotations)
+			Expect(c.Update(ctx, node)).To(Succeed())
+			result, err := reconciler.Reconcile(ctx, req)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			ExpectWithOffset(2, result.RequeueAfter).To(Equal(CostRefreshInterval))
+			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+			Expect(node.Annotations).To(HaveKey(AnnotationCostUpdatedAt))
+			_, err = time.Parse(time.RFC3339, node.Annotations[AnnotationCostUpdatedAt])
+			ExpectWithOffset(1, err).ToNot(HaveOccurred())
+		})
+
+		It("should handle broken updated-at annotation", func() {
+			node.Annotations[AnnotationCostUpdatedAt] = "broken"
+			Expect(c.Update(ctx, node)).To(Succeed())
+			result, err := reconciler.Reconcile(ctx, req)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			ExpectWithOffset(2, result.RequeueAfter).To(Equal(CostRefreshInterval))
+			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+			Expect(node.Annotations).To(HaveKey(AnnotationCostUpdatedAt))
+			_, err = time.Parse(time.RFC3339, node.Annotations[AnnotationCostUpdatedAt])
+			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		})
 	})
 

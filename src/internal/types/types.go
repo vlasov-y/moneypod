@@ -18,7 +18,6 @@ package types
 import (
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
@@ -26,27 +25,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-var (
-	// For requeueing the node for cost update
-	CostRefreshInterval = time.Hour
-	// Condition to set on the Node object signaling cost update
-	ConditionNodeHourlyCost = struct {
-		Type          corev1.NodeConditionType
-		ReasonUpdated string
-		ReasonUnknown string
-	}{
-		Type:          "HourlyCost",
-		ReasonUpdated: ConditionTypePrefix + "CostUpdated",
-		ReasonUnknown: ConditionTypePrefix + "UnknownCost",
-	}
-)
-
 const (
 	annotationDomain = "moneypod.io"
-	// Prefix for all condition types used
-	ConditionTypePrefix = "MoneyPod"
+	// For requeueing the node for cost update
+	CostRefreshInterval = time.Hour
 	// Node hourly cost
 	AnnotationNodeHourlyCost = annotationDomain + "/node-hourly-cost"
+	// Stores timestamp of the last cost update
+	AnnotationCostUpdatedAt = annotationDomain + "/cost-updated-at"
 	// Spot or on-demand
 	AnnotationNodeCapacity = annotationDomain + "/capacity"
 	// Instance type: t3a.small, etc.

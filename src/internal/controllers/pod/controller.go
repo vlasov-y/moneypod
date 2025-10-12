@@ -157,9 +157,15 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				node := obj.(*corev1.Node)
 				var requests []reconcile.Request
 				// Reconcile only Pods on the Nodes that had their price updated recently
-				for _, c := range node.Status.Conditions {
-					if c.Type == ConditionNodeHourlyCost.Type &&
-						time.Since(c.LastHeartbeatTime.Time).Seconds() < 10 {
+				if value, exists := node.GetAnnotations()[AnnotationCostUpdatedAt]; exists {
+					// Parse the time from the annotation value...
+					t, err := time.Parse(time.RFC3339, value)
+					if err != nil {
+						// ... and reconcile nothing if failed to parse
+						return requests
+					}
+					// Reconcile if price has been updated recently
+					if time.Since(t).Seconds() < 10 {
 						// List Pods on this node
 						var pods corev1.PodList
 						if err := r.Client.List(ctx, &pods, client.MatchingFields{".spec.nodeName": node.Name}); err != nil {
@@ -174,7 +180,6 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 								},
 							})
 						}
-						break
 					}
 				}
 

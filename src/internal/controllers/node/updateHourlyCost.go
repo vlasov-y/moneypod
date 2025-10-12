@@ -26,7 +26,6 @@ import (
 	. "github.com/vlasov-y/moneypod/internal/types"
 	. "github.com/vlasov-y/moneypod/internal/utils"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -39,17 +38,14 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 	}
 
 	// Check hourly cost update condition transition time
-	var condition *corev1.NodeCondition
-	for _, c := range node.Status.Conditions {
-		if c.Type == ConditionNodeHourlyCost.Type {
-			condition = c.DeepCopy()
-		}
+	costUpdatedAt := time.Unix(0, 0)
+	if value, exists := annotations[AnnotationCostUpdatedAt]; exists {
+		costUpdatedAt, _ = time.Parse(time.RFC3339, value)
 	}
+
 	// Update the price only if...
-	if _, annotationExists := annotations[AnnotationNodeHourlyCost]; condition == nil || // 1. Price was never updated
-		time.Now().After(condition.LastHeartbeatTime.Add(CostRefreshInterval)) || // 2. It is time to refresh
-		condition.Status != corev1.ConditionTrue || // 3. Last refresh was not successful
-		!annotationExists { // 4. No price annotation
+	if hourlyCostStr := annotations[AnnotationNodeHourlyCost]; hourlyCostStr == UnknownCost || // 1. Last refresh was not successful
+		time.Since(costUpdatedAt) > CostRefreshInterval { // 2. It is time to refresh or was never updated
 
 		log.V(1).Info("fetching new node hourly cost")
 
@@ -59,48 +55,16 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 			if CheckRequeue(err) {
 				return hourlyCost, ErrRequestRequeue
 			}
-
-			// Update condition to set HourlyCost condition state to False
-			err = r.updateCondition(ctx, node, corev1.NodeCondition{
-				Type:               ConditionNodeHourlyCost.Type,
-				Status:             corev1.ConditionFalse,
-				Reason:             ConditionNodeHourlyCost.ReasonUnknown,
-				Message:            err.Error(),
-				LastTransitionTime: metav1.Now(),
-			})
-			if CheckRequeue(err) {
-				return hourlyCost, ErrRequestRequeue
-			}
 			return
 		}
 
-		// Add respective annotation and update status condition
-		if condition == nil {
-			condition = &corev1.NodeCondition{
-				Type:   ConditionNodeHourlyCost.Type,
-				Status: corev1.ConditionUnknown,
-			}
-		}
-		condition.LastHeartbeatTime = metav1.Now()
 		if hourlyCost > 0 {
 			log.V(1).Info("fetched hourly cost successfully", "hourlyCost", hourlyCost)
 			annotations[AnnotationNodeHourlyCost] = strconv.FormatFloat(hourlyCost, 'f', 10, 64)
-			if condition.Status != corev1.ConditionTrue {
-				condition.Status = corev1.ConditionTrue
-				condition.LastTransitionTime = metav1.Now()
-			}
-			condition.Reason = ConditionNodeHourlyCost.ReasonUpdated
-			condition.Message = fmt.Sprintf("successfully fetched new hourly cost: %s", annotations[AnnotationNodeHourlyCost])
-			condition.LastHeartbeatTime = metav1.Now()
+			annotations[AnnotationCostUpdatedAt] = time.Now().UTC().Format(time.RFC3339)
 		} else {
 			log.V(1).Info("hourly cost is unknown", "hourlyCost", hourlyCost)
 			annotations[AnnotationNodeHourlyCost] = UnknownCost
-			if condition.Status != corev1.ConditionUnknown {
-				condition.Status = corev1.ConditionUnknown
-				condition.LastTransitionTime = metav1.Now()
-			}
-			condition.Reason = ConditionNodeHourlyCost.ReasonUnknown
-			condition.Message = "failed to fetch hourly cost using known providers"
 		}
 
 		node.SetAnnotations(annotations)
@@ -114,13 +78,6 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 			log.Error(err, "failed to update the node object")
 			r.Recorder.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
 			return
-		}
-
-		// Update condition to reschedule next price update
-		if err = r.updateCondition(ctx, node, *condition); err != nil {
-			if CheckRequeue(err) {
-				return hourlyCost, ErrRequestRequeue
-			}
 		}
 	}
 
