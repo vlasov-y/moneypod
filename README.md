@@ -1,5 +1,7 @@
 # MoneyPod
 
+[![Coverage Status](https://badge.coveralls.io/repos/github/vlasov-y/moneypod/badge.svg?branch=main)](https://badge.coveralls.io/github/vlasov-y/moneypod?branch=main)
+
 Operator that monitors node's price and calculate various costs (per pod, per application, per namespace, etc.).
 
 ## Description
