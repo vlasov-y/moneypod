@@ -115,6 +115,15 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 			_, err = time.Parse(time.RFC3339, node.Annotations[AnnotationCostUpdatedAt])
 			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		})
+
+		It("should handle zero cost set", func() {
+			node.Annotations[AnnotationNodeHourlyCost] = "0"
+			Expect(c.Update(ctx, node)).To(Succeed())
+			result, err := reconciler.Reconcile(ctx, req)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			ExpectWithOffset(2, result).To(Equal(ctrl.Result{}))
+			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+		})
 	})
 
 	Context("when node is not ready", func() {
