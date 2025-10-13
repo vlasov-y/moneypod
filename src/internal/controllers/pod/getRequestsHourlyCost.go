@@ -23,7 +23,7 @@ import (
 )
 
 func (r *PodReconciler) getRequestsHourlyCost(ctx context.Context, pod *corev1.Pod,
-	node *corev1.Node, nodeHourlyCost float64) (hourlyCost float64) {
+	cpuCoreHourlyCost float64, memoryMiBHourlyCost float64) (hourlyCost float64) {
 	log := logf.FromContext(ctx)
 
 	allocatedCPU := resource.Quantity{}
@@ -39,9 +39,6 @@ func (r *PodReconciler) getRequestsHourlyCost(ctx context.Context, pod *corev1.P
 		}
 	}
 
-	// Get reference cost
-	cpuCoreCost, memoryMiBCost := r.getResourcesRefHourlyCost(node, nodeHourlyCost)
-
 	// Define base resource units
 	cpuCore := resource.MustParse("1.0")
 	memoryMiB := resource.MustParse("1Mi")
@@ -49,8 +46,8 @@ func (r *PodReconciler) getRequestsHourlyCost(ctx context.Context, pod *corev1.P
 	memoryMiBFloat := memoryMiB.AsApproximateFloat64()
 
 	// Calculate resources requests cost
-	cpuCost := allocatedCPU.AsApproximateFloat64() / cpuCoreFloat * cpuCoreCost
-	memoryCost := allocatedMemory.AsApproximateFloat64() / memoryMiBFloat * memoryMiBCost
+	cpuCost := allocatedCPU.AsApproximateFloat64() / cpuCoreFloat * cpuCoreHourlyCost
+	memoryCost := allocatedMemory.AsApproximateFloat64() / memoryMiBFloat * memoryMiBHourlyCost
 	hourlyCost = cpuCost + memoryCost
 	log.V(1).Info("pod requests hourly cost", "cpu", cpuCost, "memory", memoryCost, "sum", hourlyCost)
 

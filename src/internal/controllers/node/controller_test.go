@@ -20,9 +20,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/vlasov-y/moneypod/internal/types"
+	. "github.com/vlasov-y/moneypod/test/utils"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -36,33 +36,22 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 	)
 
 	BeforeEach(func() {
-		node = &corev1.Node{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test",
-				Annotations: map[string]string{
-					AnnotationNodeHourlyCost:       "10.0",
-					AnnotationNodeCapacity:         "annotation=custom/capacity-type",
-					AnnotationNodeType:             "label=node.kubernetes.io/instance-type",
-					AnnotationNodeAvailabilityZone: "eu-central-1b",
-					"custom/capacity-type":         "spot",
-				},
-				Labels: map[string]string{
-					"node.kubernetes.io/instance-type": "t3a.2xlarge",
-				},
-			},
-			Status: corev1.NodeStatus{
-				Conditions: []corev1.NodeCondition{
-					{
-						Type:   corev1.NodeReady,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-		}
+		node = NewFakeNode()
+		node.SetAnnotations(map[string]string{
+			AnnotationNodeHourlyCost:       "10.0",
+			AnnotationNodeCapacity:         "annotation=custom/capacity-type",
+			AnnotationNodeType:             "label=node.kubernetes.io/instance-type",
+			AnnotationNodeAvailabilityZone: "eu-central-1b",
+			"custom/capacity-type":         "spot",
+		})
+		node.SetLabels(map[string]string{
+			"node.kubernetes.io/instance-type": "t3a.2xlarge",
+		})
 		nodeKey = types.NamespacedName{Name: node.Name}
 		req = reconcile.Request{NamespacedName: nodeKey}
 
 		Expect(c.Create(ctx, node)).To(Succeed())
+		Expect(c.Status().Update(ctx, node)).To(Succeed())
 		Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
 	})
 
@@ -87,13 +76,7 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 		})
 
 		It("should handle updated-at annotation deletion", func() {
-			annotations := map[string]string{}
-			for k, v := range node.Annotations {
-				if k != AnnotationCostUpdatedAt {
-					annotations[k] = v
-				}
-			}
-			node.SetAnnotations(annotations)
+			delete(node.Annotations, AnnotationCostUpdatedAt)
 			Expect(c.Update(ctx, node)).To(Succeed())
 			result, err := reconciler.Reconcile(ctx, req)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
@@ -143,6 +126,7 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 
 	Context("when node is not ready", func() {
 		BeforeEach(func() {
+			Expect(node.Status.Conditions[0].Type).To(Equal(corev1.NodeReady))
 			node.Status.Conditions[0].Status = corev1.ConditionFalse
 			Expect(c.Status().Update(ctx, node)).To(Succeed())
 		})

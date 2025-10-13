@@ -97,11 +97,11 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result
 		return
 	}
 
-	// Calculate minimum pod hourly cost basing on resources requests
-	info.PodRequestsHourlyCost = r.getRequestsHourlyCost(ctx, &pod, &node, info.NodeHourlyCost)
-
 	// Calculate node's reference costs
 	info.NodeCPUCoreHourlyCost, info.NodeMemoryMiBHourlyCost = r.getResourcesRefHourlyCost(&node, info.NodeHourlyCost)
+
+	// Calculate minimum pod hourly cost basing on resources requests
+	info.PodRequestsHourlyCost = r.getRequestsHourlyCost(ctx, &pod, info.NodeCPUCoreHourlyCost, info.NodeMemoryMiBHourlyCost)
 
 	// Get owner
 	if len(pod.GetOwnerReferences()) > 0 {
@@ -150,7 +150,8 @@ func (r *PodReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
-		// Watch Nodes, and enqueue Pods that are scheduled there
+		// Watch Nodes in case of cost update and enqueue...
+		// ... for reconciliation only required Pods
 		Watches(
 			&corev1.Node{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {

@@ -173,16 +173,16 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - https://github.com/vlasov-y/moneypod/releases/latest/download/install.yaml
-## Uncomment if you want to disable creation of custom namespace and plan to use system one instead
-# patches:
-#  - patch: |-
-#      $patch: delete
-#      apiVersion: v1
-#      kind: Namespace
-#      metadata:
-#        name: _
-#    target:
-#      kind: Namespace
+## Uncomment if you want to disable creation of custom namespace
+#patches:
+# - patch: |-
+#     $patch: delete
+#     apiVersion: v1
+#     kind: Namespace
+#     metadata:
+#       name: _
+#   target:
+#     kind: Namespace
 #namespace: kube-system
 
 ```

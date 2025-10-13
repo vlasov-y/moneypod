@@ -12,39 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package manual
+package utils
 
 import (
-	"context"
-	"testing"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/tools/record"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-func TestE2E(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Provider manual")
-}
-
-var (
-	cancel   context.CancelFunc
-	ctx      context.Context
-	err      error
-	provider Provider
-	recorder *record.FakeRecorder
-)
-
-var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-	recorder = record.NewFakeRecorder(1)
-	ctx, cancel = context.WithCancel(context.Background())
-	provider = Provider{}
-})
-
-var _ = AfterSuite(func() {
-	cancel()
+var _ = Describe("NewFakeReplicaSet", Ordered, func() {
+	Context("when making an object", func() {
+		It("should return a valid replicaset", func() {
+			replicaset := NewFakeReplicaSet()
+			ExpectWithOffset(1, replicaset.Kind).To(Equal("ReplicaSet"))
+			ExpectWithOffset(2, replicaset.Name).ToNot(BeEmpty())
+			ExpectWithOffset(3, replicaset.Status).ToNot(BeNil())
+		})
+	})
 })
