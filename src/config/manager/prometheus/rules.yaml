@@ -7,7 +7,7 @@ spec:
     - name: moneypod.io
       interval: 30s
       rules:
-        - record: moneypod:pod_cpu_total_cost
+        - record: moneypod:pod_cpu_cost_total
           expr: |
             sum by (cluster, node, namespace, pod) (
               container_cpu_usage_seconds_total{image!="", container!=""}
@@ -15,7 +15,7 @@ spec:
             * on(cluster, node, namespace, pod) group_left(owner_kind, owner_name)
             moneypod_pod_cpu_hourly_cost
 
-        - record: moneypod:pod_memory_total_cost
+        - record: moneypod:pod_memory_cost_total
           expr: |
             ((time() - kube_pod_created) / 3600)
             * on(cluster, namespace, pod)
@@ -26,27 +26,27 @@ spec:
             * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_memory_hourly_cost
 
-        - record: moneypod:pod_usage_total_cost
+        - record: moneypod:pod_usage_cost_total
           expr: |
-            moneypod:pod_cpu_total_cost
+            moneypod:pod_cpu_cost_total
             + on(cluster, node, namespace, pod, owner_kind, owner_name)
-            moneypod:pod_memory_total_cost
+            moneypod:pod_memory_cost_total
 
-        - record: moneypod:pod_requests_total_cost
+        - record: moneypod:pod_requests_cost_total
           expr: |
             ((time() - kube_pod_created) / 3600)
             * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
             moneypod_pod_requests_hourly_cost
 
-        - record: moneypod:pod_effective_total_cost
+        - record: moneypod:pod_effective_cost_total
           expr: |
             max by (cluster, node, namespace, pod, owner_kind, owner_name) (
-              moneypod:pod_usage_total_cost
+              moneypod:pod_usage_cost_total
               or
-              moneypod:pod_requests_total_cost
+              moneypod:pod_requests_cost_total
             )
 
-        - record: moneypod:node_total_cost
+        - record: moneypod:node_cost_total
           expr: |
             ((time() - kube_node_created) / 3600)
             * on(cluster, node) group_left(availability_zone, type, capacity)
