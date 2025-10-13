@@ -15,24 +15,13 @@
 package utils
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-// GetProjectDir will return the directory where the project is
-func GetProjectDir() (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return wd, fmt.Errorf("failed to get current working directory: %w", err)
-	}
-
-	for wd != "/" {
-		if filepath.Base(wd) == "src" {
-			return wd, nil
-		}
-		wd = filepath.Dir(wd)
-	}
-	return "", errors.New("failed to find project root")
+func TestUtils(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Utils")
 }

@@ -104,6 +104,20 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		})
 
+		It("should handle broken node-hourly-cost annotation", func() {
+			node.Annotations[AnnotationNodeHourlyCost] = "broken"
+			node.Annotations[AnnotationCostUpdatedAt] = time.Now().Add(time.Hour * 24).UTC().Format(time.RFC3339)
+			Expect(c.Update(ctx, node)).To(Succeed())
+			result, err := reconciler.Reconcile(ctx, req)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			ExpectWithOffset(2, result).To(Equal(ctrl.Result{}))
+			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+			Expect(node.Annotations).To(HaveKeyWithValue(AnnotationNodeHourlyCost, UnknownCost))
+			Expect(node.Annotations).To(HaveKey(AnnotationCostUpdatedAt))
+			_, err = time.Parse(time.RFC3339, node.Annotations[AnnotationCostUpdatedAt])
+			ExpectWithOffset(1, err).ToNot(HaveOccurred())
+		})
+
 		It("should handle broken updated-at annotation", func() {
 			node.Annotations[AnnotationCostUpdatedAt] = "broken"
 			Expect(c.Update(ctx, node)).To(Succeed())
@@ -116,13 +130,14 @@ var _ = Describe("NodeReconciler", Ordered, func() {
 			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 		})
 
-		It("should handle zero cost set", func() {
+		It("should handle zero cost set as unknown", func() {
 			node.Annotations[AnnotationNodeHourlyCost] = "0"
 			Expect(c.Update(ctx, node)).To(Succeed())
 			result, err := reconciler.Reconcile(ctx, req)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			ExpectWithOffset(2, result).To(Equal(ctrl.Result{}))
 			Expect(c.Get(ctx, nodeKey, node)).To(Succeed())
+			Expect(node.Annotations).To(HaveKeyWithValue(AnnotationNodeHourlyCost, UnknownCost))
 		})
 	})
 

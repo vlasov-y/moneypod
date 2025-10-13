@@ -81,26 +81,14 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 		}
 	}
 
-	// Get the const from annotations...
-	if annotations[AnnotationNodeHourlyCost] == UnknownCost {
-		hourlyCost = -1
-	} else {
-		// ...if it is defined
-		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil || hourlyCost == 0 {
-			if hourlyCost == 0 {
-				log.Info("node hourly cost has been set to 0 so reevaluation is required")
-			} else {
-				msg := fmt.Sprintf("failed to parse the cost: %s", annotations[AnnotationNodeHourlyCost])
-				log.Error(err, msg)
-			}
-			// If price is broken - delete the annotation
-			newAnnotations := map[string]string{}
-			for k, v := range annotations {
-				if k != AnnotationNodeHourlyCost {
-					newAnnotations[k] = v
-				}
-			}
-			node.SetAnnotations(newAnnotations)
+	// Parse cost from annotation as float
+	if annotations[AnnotationNodeHourlyCost] != UnknownCost {
+		if hourlyCost, err = strconv.ParseFloat(annotations[AnnotationNodeHourlyCost], 64); err != nil {
+			msg := fmt.Sprintf("failed to parse the cost: %s", annotations[AnnotationNodeHourlyCost])
+			log.Error(err, msg)
+			// If price is broken - set cost to unknown
+			annotations[AnnotationNodeHourlyCost] = UnknownCost
+			node.SetAnnotations(annotations)
 			// Update the object
 			if err = r.Update(ctx, node); err != nil {
 				if strings.Contains(err.Error(), "please apply your changes to the latest version and try again") {
@@ -112,8 +100,12 @@ func (r *NodeReconciler) updateHourlyCost(ctx context.Context, node *corev1.Node
 				r.Recorder.Eventf(node, corev1.EventTypeWarning, "UpdateNodeFailed", err.Error())
 				return
 			}
-			return
 		}
+	}
+
+	// Handle unknown cost in one place
+	if annotations[AnnotationNodeHourlyCost] == UnknownCost {
+		hourlyCost = -1
 	}
 
 	return

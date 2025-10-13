@@ -16,20 +16,13 @@ package utils
 
 import (
 	"os"
-	"os/exec"
 	"path"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-func TestUtils(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Utils")
-}
-
-var _ = Describe("Utils", Ordered, func() {
+var _ = Describe("GetProjectDir", Ordered, func() {
 	Context("when getting project directory", func() {
 		It("should return a valid path", func() {
 			dir, err := GetProjectDir()
@@ -41,15 +34,14 @@ var _ = Describe("Utils", Ordered, func() {
 			ExpectWithOffset(1, err).ToNot(HaveOccurred())
 			ExpectWithOffset(2, info.Mode().IsRegular()).To(BeTrue())
 		})
-	})
 
-	Context("when running a command", func() {
-		It("should succeed on a valid command", func() {
-			Expect(Run(exec.Command("date"))).To(Succeed())
-		})
-
-		It("should return an error for the failed command", func() {
-			Expect(Run(exec.Command("exit", "1"))).ToNot(Succeed())
+		It("should return an error if impossible to find", func() {
+			cwd, err := os.Getwd()
+			ExpectWithOffset(1, err).ToNot(HaveOccurred())
+			Expect(os.Chdir("/")).To(Succeed())
+			_, err = GetProjectDir()
+			ExpectWithOffset(1, err).To(HaveOccurred())
+			Expect(os.Chdir(cwd)).To(Succeed())
 		})
 	})
 })
