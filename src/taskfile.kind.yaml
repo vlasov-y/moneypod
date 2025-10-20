@@ -94,7 +94,7 @@ tasks:
     deps: [create]
     cmds:
       - "{{ .bin.kind }} export kubeconfig --name {{ .kind.name }} --kubeconfig {{ squote .kubeconfig }}"
-      - "{{ .bin.kubectl }} config set-context --current --namespace=moneypod"
+      - "{{ .bin.kubectl }} config set-context --current --namespace={{ squote .name }}"
 
   load:
     desc: Load image into cluster
