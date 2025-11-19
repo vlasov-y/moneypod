@@ -30,12 +30,12 @@ func (r *PodReconciler) getRequestsHourlyCost(ctx context.Context, pod *corev1.P
 	allocatedMemory := resource.Quantity{}
 
 	// Sum allocated resources from pod status
-	for _, status := range pod.Status.ContainerStatuses {
-		if status.AllocatedResources.Cpu() != nil {
-			allocatedCPU.Add(*status.AllocatedResources.Cpu())
+	for _, container := range pod.Spec.Containers {
+		if container.Resources.Requests.Cpu() != nil {
+			allocatedCPU.Add(*container.Resources.Requests.Cpu())
 		}
-		if status.AllocatedResources.Memory() != nil {
-			allocatedMemory.Add(*status.AllocatedResources.Memory())
+		if container.Resources.Requests.Memory() != nil {
+			allocatedMemory.Add(*container.Resources.Requests.Memory())
 		}
 	}
 

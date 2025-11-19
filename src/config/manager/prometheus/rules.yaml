@@ -7,7 +7,7 @@ spec:
     - name: moneypod.io
       interval: 30s
       rules:
-        - record: moneypod:pod_cpu_cost_total
+        - record: moneypod:pod_cpu_cost:since_creation
           expr: |
             sum by (cluster, node, namespace, pod) (
               container_cpu_usage_seconds_total{image!="", container!=""}
@@ -15,7 +15,7 @@ spec:
             * on(cluster, node, namespace, pod) group_left(owner_kind, owner_name)
             moneypod_pod_cpu_hourly_cost
 
-        - record: moneypod:pod_memory_cost_total
+        - record: moneypod:pod_memory_cost:since_creation
           expr: |
             ((time() - kube_pod_created) / 3600)
             * on(cluster, namespace, pod)
@@ -23,31 +23,55 @@ spec:
               avg_over_time(container_memory_working_set_bytes{image!="", container!=""}[1h])
             )
             / 1024 / 1024
-            * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
+            * on(cluster, namespace, pod) group_left(node, owner_kind, owner_name)
             moneypod_pod_memory_hourly_cost
 
-        - record: moneypod:pod_usage_cost_total
+        - record: moneypod:pod_usage_cost:since_creation
           expr: |
-            moneypod:pod_cpu_cost_total
+            moneypod:pod_cpu_cost:since_creation
             + on(cluster, node, namespace, pod, owner_kind, owner_name)
-            moneypod:pod_memory_cost_total
+            moneypod:pod_memory_cost:since_creation
 
-        - record: moneypod:pod_requests_cost_total
+        - record: moneypod:pod_usage_cost:total
           expr: |
-            ((time() - kube_pod_created) / 3600)
-            * on(cluster, namespace, pod) group_left(owner_kind, owner_name, node)
-            moneypod_pod_requests_hourly_cost
+            increase(moneypod:pod_usage_cost:since_creation[1h])
 
-        - record: moneypod:pod_effective_cost_total
+        - record: moneypod:pod_requests_cost:since_creation
           expr: |
-            max by (cluster, node, namespace, pod, owner_kind, owner_name) (
-              moneypod:pod_usage_cost_total
-              or
-              moneypod:pod_requests_cost_total
+            sum by (cluster, node, namespace, pod, owner_kind, owner_name) (
+              ((time() - kube_pod_created) / 3600)
+              * on(cluster, namespace, pod) group_left(node, owner_kind, owner_name)
+              moneypod_pod_requests_hourly_cost
             )
 
-        - record: moneypod:node_cost_total
+        - record: moneypod:pod_requests_cost:total
+          expr: |
+            increase(moneypod:pod_requests_cost:since_creation[1h])
+
+        - record: moneypod:pod_effective_cost:since_creation
+          expr: |
+            (
+              moneypod:pod_usage_cost:since_creation
+              * on(cluster, node, namespace, pod, owner_kind, owner_name)
+              (moneypod:pod_usage_cost:since_creation >= bool on(cluster, node, namespace, pod, owner_kind, owner_name) moneypod:pod_requests_cost:since_creation)
+            )
+            +
+            (
+              moneypod:pod_requests_cost:since_creation
+              * on(cluster, node, namespace, pod, owner_kind, owner_name)
+              (moneypod:pod_usage_cost:since_creation < bool on(cluster, node, namespace, pod, owner_kind, owner_name) moneypod:pod_requests_cost:since_creation)
+            )
+
+        - record: moneypod:pod_effective_cost:total
+          expr: |
+            increase(moneypod:pod_effective_cost:since_creation[1h])
+
+        - record: moneypod:node_cost:since_creation
           expr: |
             ((time() - kube_node_created) / 3600)
             * on(cluster, node) group_left(availability_zone, type, capacity)
             moneypod_node_hourly_cost
+
+        - record: moneypod:node_cost:total
+          expr: |
+            increase(moneypod:node_cost:since_creation[1h])

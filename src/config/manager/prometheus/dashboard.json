@@ -26,43 +26,41 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
+      "description": "Sum of all Nodes cost",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
+            "fixedColor": "text",
+            "mode": "fixed"
           },
           "fieldMinMax": false,
           "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
           "unit": "currencyUSD"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 4,
+        "w": 4,
         "x": 0,
         "y": 0
       },
-      "id": 7,
+      "id": 15,
       "options": {
-        "displayLabels": [],
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "values": [
-            "percent",
-            "value"
-          ]
-        },
-        "pieType": "pie",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -70,23 +68,16 @@
           "fields": "",
           "values": false
         },
-        "tooltip": {
-          "hideZeros": true,
-          "mode": "single",
-          "sort": "desc"
-        }
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "12.1.1",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (node) (\n        moneypod:node_cost_total{cluster=~\"$cluster\"}\n    )\n)",
-          "format": "time_series",
+          "expr": "sum(\n    moneypod:node_cost:total{cluster=~\"$cluster\"}\n)",
           "instant": true,
           "interval": "$min_step",
           "legendFormat": "__auto",
@@ -94,8 +85,156 @@
           "refId": "A"
         }
       ],
-      "title": "Node Cost by Node",
-      "type": "piechart"
+      "title": "Total Nodes Cost",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Sum of all Pods cost",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 16,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(\n    moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n)",
+          "instant": true,
+          "interval": "$min_step",
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Total Application Cost",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Total Pods Cost / Total Nodes Cost\nSo it is a percent of the money you used from the amount you paid",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "text",
+            "mode": "thresholds"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "orange",
+                "value": 0.4
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.6
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 17,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.1.1",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(\n    moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n)\n/\nsum(\n    moneypod:node_cost:total{cluster=~\"$cluster\"}\n)",
+          "instant": false,
+          "interval": "$min_step",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Money Utilization",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -107,14 +246,17 @@
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
+          "fieldMinMax": false,
           "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
           "unit": "currencyUSD"
         },
         "overrides": []
@@ -125,19 +267,20 @@
         "x": 12,
         "y": 0
       },
-      "id": 9,
+      "id": 7,
       "options": {
-        "displayLabels": [],
+        "displayMode": "gradient",
         "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "values": [
-            "value",
-            "percent"
-          ]
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
-        "pieType": "pie",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -145,11 +288,9 @@
           "fields": "",
           "values": false
         },
-        "tooltip": {
-          "hideZeros": true,
-          "mode": "single",
-          "sort": "desc"
-        }
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "text"
       },
       "pluginVersion": "12.1.1",
       "targets": [
@@ -160,7 +301,85 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_cost_total{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (node) (\n        moneypod:node_cost:total{cluster=~\"$cluster\"}\n    )\n)",
+          "format": "time_series",
+          "instant": true,
+          "interval": "$min_step",
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Node Cost by Node",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "fieldMinMax": false,
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 9,
+      "options": {
+        "displayMode": "gradient",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 0,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "text"
+      },
+      "pluginVersion": "12.1.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_cost:total{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -170,7 +389,7 @@
         }
       ],
       "title": "Node Cost by Role",
-      "type": "piechart"
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -235,7 +454,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (namespace) (\n        moneypod:pod_effective_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (namespace) (\n        moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
           "format": "heatmap",
           "instant": true,
           "interval": "$min_step",
@@ -244,7 +463,7 @@
           "refId": "A"
         }
       ],
-      "title": "Namespace Cost",
+      "title": "Top Namespaces by Cost",
       "type": "piechart"
     },
     {
@@ -309,7 +528,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_effective_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -318,7 +537,7 @@
           "refId": "A"
         }
       ],
-      "title": "Application Cost",
+      "title": "Top Applications by Cost",
       "type": "piechart"
     },
     {
@@ -326,7 +545,7 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Closer to 100% is better. X percent means that we pay for requested resources, but usage cost is only X of that resources price.",
+      "description": "Closer to 100% is better. X percent means that we pay for requested resources, but usage cost is only X of that resources price.  \n**NOTE**: It consider only Pods with requests `cpu >= 50m` **AND** `memory >= 50Mi`",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -336,24 +555,21 @@
           "fieldMinMax": false,
           "mappings": [],
           "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "dark-red",
+                "color": "red",
                 "value": 0
               },
               {
-                "color": "red",
-                "value": 0.2
-              },
-              {
                 "color": "orange",
-                "value": 0.4
+                "value": 0.3
               },
               {
                 "color": "yellow",
-                "value": 0.6
+                "value": 0.4
               },
               {
                 "color": "green",
@@ -405,11 +621,11 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_usage_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n        / on(cluster, namespace, pod) group_left(instance, owner_kind, owner_name)\n        (moneypod:pod_requests_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"} > 0)\n    )\n)",
+          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node, namespace, pod, owner_kind, owner_name) (\n            moneypod:pod_usage_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n            / on(cluster, namespace, pod) group_left(instance, owner_kind, owner_name)\n            (moneypod:pod_requests_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"} > 0)\n        )\n        * on(cluster, node, namespace, pod) group_right(owner_kind, owner_name)\n        sum by (cluster, node, namespace, pod) (\n            (kube_pod_container_resource_requests{resource=\"memory\"} >= bool 50 * 1024 * 1024)\n        )\n        * on(cluster, node, namespace, pod) group_right(owner_kind, owner_name)\n        sum by (cluster, node, namespace, pod) (\n            (kube_pod_container_resource_requests{resource=\"cpu\"} >= bool 0.050)\n        )\n    ) <= 1\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
-          "legendFormat": "{{owner_kind}}/{{owner_name}}",
+          "legendFormat": "{{owner_kind}} / {{owner_name}}",
           "range": false,
           "refId": "A"
         }
@@ -432,28 +648,25 @@
           "fieldMinMax": false,
           "mappings": [],
           "max": 1,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "dark-red",
+                "color": "red",
                 "value": 0
               },
               {
-                "color": "red",
-                "value": 0.2
-              },
-              {
                 "color": "orange",
-                "value": 0.4
+                "value": 0.3
               },
               {
                 "color": "yellow",
-                "value": 0.6
+                "value": 0.4
               },
               {
                 "color": "green",
-                "value": 0.8
+                "value": 0.7
               }
             ]
           },
@@ -501,7 +714,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node) (moneypod:pod_usage_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on(cluster, node) group_left(instance)\n        moneypod:node_cost_total{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node) (moneypod:pod_usage_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on(cluster, node) group_left(instance)\n        moneypod:node_cost:total{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -564,10 +777,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -608,7 +817,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (namespace) (\n        rate(\n            moneypod:pod_effective_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__rate_interval]\n        )\n    )\n)",
+          "expr": "topk($topk,\n    sum by (namespace) (\n        rate(\n            moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__rate_interval]\n        )\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -671,10 +880,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -713,7 +918,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        rate(\n            moneypod:pod_effective_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"} [$__rate_interval]\n        )\n    )\n)",
+          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        rate(\n            moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"} [$__rate_interval]\n        )\n    )\n)",
           "format": "time_series",
           "instant": false,
           "interval": "$min_step",
@@ -735,8 +940,8 @@
       {
         "allowCustomValue": false,
         "current": {
-          "text": "VictoriaMetrics",
-          "value": "P4169E866C3094E38"
+          "text": "Prometheus",
+          "value": "prometheus"
         },
         "label": "Datasource",
         "name": "datasource",
@@ -777,7 +982,9 @@
         "allowCustomValue": true,
         "current": {
           "text": "All",
-          "value": "$__all"
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
