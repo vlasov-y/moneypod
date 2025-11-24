@@ -71,7 +71,3 @@ spec:
             ((time() - kube_node_created) / 3600)
             * on(cluster, node) group_left(availability_zone, type, capacity)
             moneypod_node_hourly_cost
-
-        - record: moneypod:node_cost:total
-          expr: |
-            increase(moneypod:node_cost:since_creation[1h])
