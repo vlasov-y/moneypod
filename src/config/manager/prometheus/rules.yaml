@@ -32,10 +32,6 @@ spec:
             + on(cluster, node, namespace, pod, owner_kind, owner_name)
             moneypod:pod_memory_cost:since_creation
 
-        - record: moneypod:pod_usage_cost:total
-          expr: |
-            increase(moneypod:pod_usage_cost:since_creation[1h])
-
         - record: moneypod:pod_requests_cost:since_creation
           expr: |
             sum by (cluster, node, namespace, pod, owner_kind, owner_name) (
@@ -43,10 +39,6 @@ spec:
               * on(cluster, namespace, pod) group_left(node, owner_kind, owner_name)
               moneypod_pod_requests_hourly_cost
             )
-
-        - record: moneypod:pod_requests_cost:total
-          expr: |
-            increase(moneypod:pod_requests_cost:since_creation[1h])
 
         - record: moneypod:pod_effective_cost:since_creation
           expr: |
@@ -61,10 +53,6 @@ spec:
               * on(cluster, node, namespace, pod, owner_kind, owner_name)
               (moneypod:pod_usage_cost:since_creation < bool on(cluster, node, namespace, pod, owner_kind, owner_name) moneypod:pod_requests_cost:since_creation)
             )
-
-        - record: moneypod:pod_effective_cost:total
-          expr: |
-            increase(moneypod:pod_effective_cost:since_creation[1h])
 
         - record: moneypod:node_cost:since_creation
           expr: |

@@ -77,7 +77,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(\n    moneypod:node_cost:since_creation{cluster=~\"$cluster\"}\n)",
+          "expr": "sum by (cluster) (\n    increase(moneypod:node_cost:since_creation{cluster=~\"$cluster\"}[$__range])\n)\n",
           "instant": true,
           "interval": "$min_step",
           "legendFormat": "__auto",
@@ -144,7 +144,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(\n    moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n)",
+          "expr": "sum by (cluster) (\n    increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n)",
           "instant": true,
           "interval": "$min_step",
           "legendFormat": "__auto",
@@ -225,7 +225,7 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(\n    moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n)\n/\nsum(\n    moneypod:node_cost:since_creation{cluster=~\"$cluster\"}\n)",
+          "expr": "sum by (cluster) (\n    increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n)\n/\nsum by (cluster) (\n    increase(moneypod:node_cost:since_creation{cluster=~\"$cluster\"}[$__range])\n)\n",
           "instant": false,
           "interval": "$min_step",
           "legendFormat": "__auto",
@@ -301,7 +301,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (node) (\n        moneypod:node_cost:since_creation{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (node) (\n        increase(moneypod:node_cost:since_creation{cluster=~\"$cluster\"}[$__range])\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -379,7 +379,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            moneypod:node_cost:since_creation{cluster=~\"$cluster\"}\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (role) (\n        sum by (node) (\n            increase(moneypod:node_cost:since_creation{cluster=~\"$cluster\"}[$__range])\n        )\n        * on (node) group_left (role)\n        kube_node_role{cluster=~\"$cluster\"}\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -454,7 +454,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (namespace) (\n        moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (namespace) (\n        increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n    )\n)",
           "format": "heatmap",
           "instant": true,
           "interval": "$min_step",
@@ -528,7 +528,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n    )\n)",
+          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -621,7 +621,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node, namespace, pod, owner_kind, owner_name) (\n            moneypod:pod_usage_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}\n            / on(cluster, namespace, pod) group_left(instance, owner_kind, owner_name)\n            (moneypod:pod_requests_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"} > 0)\n        )\n        * on(cluster, node, namespace, pod) group_right(owner_kind, owner_name)\n        clamp_max(\n            sum by (cluster, node, namespace, pod) (\n                (kube_pod_container_resource_requests{resource=\"memory\"} >= bool 50 * 1024 * 1024)\n            )\n            + on(cluster, node, namespace, pod)\n            sum by (cluster, node, namespace, pod) (\n                (kube_pod_container_resource_requests{resource=\"cpu\"} >= bool 0.050) \n            )\n        , 1) > 0\n    ) <= 1\n)",
+          "expr": "bottomk($topk,\n    sum by (owner_kind, owner_name) (\n        sum by (cluster, node, namespace, pod, owner_kind, owner_name) (\n            increase(moneypod:pod_usage_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n            / on(cluster, namespace, pod) group_left(instance, owner_kind, owner_name)\n            (increase(moneypod:pod_requests_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind!=\"Node\"}[$__range]) > 0)\n        )\n        * on(cluster, node, namespace, pod) group_right(owner_kind, owner_name)\n        clamp_max(\n            sum by (cluster, node, namespace, pod) (\n                (kube_pod_container_resource_requests{resource=\"memory\"} >= bool 50 * 1024 * 1024)\n            )\n            +\n            sum by (cluster, node, namespace, pod) (\n                (kube_pod_container_resource_requests{resource=\"cpu\"} >= bool 0.050) \n            )\n        , 1) > 0\n    ) <= 1\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -714,7 +714,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "bottomk($topk,\n    (\n        sum by (cluster, node) (moneypod:pod_usage_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"})\n        / on(cluster, node) group_left(instance)\n        moneypod:node_cost:since_creation{cluster=~\"$cluster\"}\n    )\n)",
+          "expr": "bottomk($topk,\n    sum by (node) (\n        sum by (cluster, node) (\n            increase(moneypod:pod_usage_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__range])\n        )\n        / on(cluster, node) group_left(instance)\n        increase(moneypod:node_cost:since_creation{cluster=~\"$cluster\"}[$__range])\n    )\n)",
           "format": "time_series",
           "instant": true,
           "interval": "$min_step",
@@ -731,46 +731,14 @@
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Namespace cost per second",
+      "description": "How much will a namespace cost in a week",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -792,21 +760,28 @@
       },
       "id": 12,
       "options": {
+        "displayMode": "gradient",
         "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "sortBy": "Last *",
-          "sortDesc": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": true,
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "text"
       },
       "pluginVersion": "12.1.1",
       "targets": [
@@ -817,63 +792,31 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (namespace) (\n        rate(\n            moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[$__rate_interval]\n        )\n    )\n)",
+          "expr": "topk($topk,\n    sum by (namespace) (\n        increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[1h]) * 24 * 7\n    )\n)",
           "format": "time_series",
-          "instant": false,
+          "instant": true,
           "interval": "$min_step",
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Namespace Cost Rate",
-      "type": "timeseries"
+      "title": "Namespace Cost in 1w",
+      "type": "bargauge"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Application cost per second",
+      "description": "How much an application will cost in a week",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -895,19 +838,28 @@
       },
       "id": 10,
       "options": {
+        "displayMode": "gradient",
         "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "text"
       },
       "pluginVersion": "12.1.1",
       "targets": [
@@ -918,17 +870,17 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        rate(\n            moneypod:pod_effective_cost:total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"} [$__rate_interval]\n        )\n    )\n)",
+          "expr": "topk($topk,\n    sum by (owner_kind, owner_name) (\n        increase(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\", owner_name=~\"$owner_name\"}[1h]) * 24 * 7\n    )\n)",
           "format": "time_series",
-          "instant": false,
+          "instant": true,
           "interval": "$min_step",
           "legendFormat": "{{owner_kind}}/{{owner_name}}",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "Application Cost Rate",
-      "type": "timeseries"
+      "title": "Application Cost in 1w",
+      "type": "bargauge"
     }
   ],
   "preload": false,
@@ -1010,13 +962,15 @@
         "allValue": ".+",
         "current": {
           "text": "All",
-          "value": "$__all"
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(moneypod:pod_requests_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\"},owner_kind)",
+        "definition": "label_values(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\"},owner_kind)",
         "includeAll": true,
         "label": "Owner Kind",
         "multi": true,
@@ -1024,7 +978,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(moneypod:pod_requests_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\"},owner_kind)",
+          "query": "label_values(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\"},owner_kind)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -1037,13 +991,15 @@
         "allowCustomValue": true,
         "current": {
           "text": "All",
-          "value": "$__all"
+          "value": [
+            "$__all"
+          ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "${datasource}"
         },
-        "definition": "label_values(moneypod:pod_requests_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\"},owner_name)",
+        "definition": "label_values(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\"},owner_name)",
         "includeAll": true,
         "label": "Owner Name",
         "multi": true,
@@ -1051,7 +1007,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(moneypod:pod_requests_cost_total{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\"},owner_name)",
+          "query": "label_values(moneypod:pod_effective_cost:since_creation{cluster=~\"$cluster\", namespace=~\"$namespace\", owner_kind=~\"$owner_kind\"},owner_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
