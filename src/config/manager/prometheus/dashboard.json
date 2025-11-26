@@ -257,7 +257,8 @@
               }
             ]
           },
-          "unit": "currencyUSD"
+          "unit": "currencyUSD",
+          "min": 0
         },
         "overrides": []
       },
